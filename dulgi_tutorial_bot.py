@@ -19,7 +19,8 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 user_tutorial_progress = {}
-FORUM_CHANNEL_ID = 1423360385225851011  # ✅ '주간-그림보고' 포럼 채널 ID
+FORUM_CHANNEL_ID = 1423360385225851011  # '주간-그림보고' 포럼 채널 ID
+TARGET_ROLE_ID = 1426578319410728980    # ✅ 온보딩 완료 후 역할 ID
 
 # ===== Flask Keep-Alive =====
 app = Flask(__name__)
@@ -110,12 +111,13 @@ class TutorialView(discord.ui.View):
 
     @discord.ui.button(label="시작하기", style=discord.ButtonStyle.green, custom_id="start_tutorial")
     async def start_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()  # ✅ 먼저 응답 보류
         user_tutorial_progress[interaction.user.id] = 1
         await send_tutorial_step(interaction.user, 1)
-        await interaction.response.defer()
 
     @discord.ui.button(label="다음 단계", style=discord.ButtonStyle.primary, custom_id="next_step")
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()  # ✅ 상호작용 실패 방지
         uid = interaction.user.id
         cur = user_tutorial_progress.get(uid, 1)
         nxt = cur + 1
@@ -125,13 +127,12 @@ class TutorialView(discord.ui.View):
             msg = "🎉 튜토리얼 완료! 이제 매주 피드백을 남겨보세요."
             if thread:
                 msg += f"\n🗂️ 자동으로 포럼이 생성되었어요! {thread.mention}"
-            await interaction.response.send_message(msg, ephemeral=True)
+            await interaction.followup.send(msg, ephemeral=True)
             user_tutorial_progress[uid] = "done"
             return
 
         user_tutorial_progress[uid] = nxt
         await send_tutorial_step(interaction.user, nxt)
-        await interaction.response.defer()
 
 # ===== 명령어 =====
 @bot.command(name="튜토리얼")
@@ -147,23 +148,28 @@ async def start_tutorial(ctx):
     except discord.Forbidden:
         await ctx.reply("⚠️ DM이 차단되어 있어요! 개인 메시지 수신을 허용해주세요.")
 
-# ===== 신규 입장자 자동 DM =====
+# ===== 역할 부여 이후 튜토리얼 시작 =====
 @bot.event
-async def on_member_join(member: discord.Member):
-    try:
-        embed = discord.Embed(
-            title=f"👋 {member.display_name}님, 그림친구 1팀에 오신 걸 환영합니다!",
-            description=(
-                "이곳은 매일 그림 그리고 함께 성장하는 **그림 회사**예요 🎨\n\n"
-                "둘비서가 입사 오리엔테이션을 도와드릴게요!\n"
-                "아래 버튼을 눌러 튜토리얼을 시작해보세요 💼"
-            ),
-            color=0x00B2FF
-        )
-        await member.send(embed=embed, view=TutorialView(step=0))
-        print(f"✅ 신규 입사자 DM 전송 완료: {member.display_name}")
-    except discord.Forbidden:
-        print(f"⚠️ {member.display_name} 님에게 DM 전송 실패 (DM 차단됨)")
+async def on_member_update(before: discord.Member, after: discord.Member):
+    new_roles = [r for r in after.roles if r not in before.roles]
+    if not new_roles:
+        return
+
+    if any(r.id == TARGET_ROLE_ID for r in new_roles):
+        try:
+            embed = discord.Embed(
+                title=f"👋 {after.display_name}님, 그림친구 1팀에 오신 걸 환영합니다!",
+                description=(
+                    "이제 모든 준비가 완료되었어요 🎨\n\n"
+                    "둘비서가 입사 오리엔테이션을 도와드릴게요!\n"
+                    "아래 버튼을 눌러 튜토리얼을 시작해보세요 💼"
+                ),
+                color=0x00B2FF
+            )
+            await after.send(embed=embed, view=TutorialView(step=0))
+            print(f"✅ '{after.display_name}' 님에게 튜토리얼 DM 전송 완료!")
+        except discord.Forbidden:
+            print(f"⚠️ {after.display_name} DM 전송 실패 (DM 차단됨)")
 
 @bot.event
 async def on_ready():
