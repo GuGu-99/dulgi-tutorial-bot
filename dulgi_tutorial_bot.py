@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-# dulgi-tutorial-bot : 서버 내 1:1 튜토리얼 (Python 3.13 대응 / audioop 우회)
+# dulgi-tutorial-bot : Step 1 자동진행 버전 (Python 3.13 대응)
 
 # ---- Python 3.13 audioop 제거 대응 (가짜 모듈 등록: 반드시 맨 위) ----
 import sys, types
 sys.modules["audioop"] = types.ModuleType("audioop")
 
-# ---- 일반 import ----
 import asyncio, os, discord
 from discord.ext import commands
 from flask import Flask
@@ -18,11 +17,11 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # --- 설정값 ---
-FORUM_CHANNEL_ID   = 1423360385225851011  # 주간-그림보고
-TARGET_ROLE_ID     = 1426578319410728980  # 온보딩 완료 역할
-LOG_CHANNEL_ID     = 1426600994522112100  # 관리자 보고용 채널
-TUTORIAL_CATEGORY_ID = None               # (선택) 튜토리얼 카테고리
-DELETE_DELAY       = 300                  # 5분 후 자동 삭제 (초 단위)
+FORUM_CHANNEL_ID   = 1423360385225851011
+TARGET_ROLE_ID     = 1426578319410728980
+LOG_CHANNEL_ID     = 1426600994522112100
+TUTORIAL_CATEGORY_ID = None
+DELETE_DELAY       = 300  # 5분 후 자동 삭제
 
 user_tutorial_progress = {}
 sent_users = set()
@@ -136,6 +135,24 @@ async def on_member_update(before, after):
         sent_users.add(after.id)
         await create_private_tutorial_channel(after.guild, after)
         print(f"✅ 튜토리얼 채널 생성 → {after.display_name}")
+
+# --- Step1 자동감지 로직 추가 ---
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+
+    user = message.author
+    step = user_tutorial_progress.get(user.id)
+
+    # Step 1 감지 : "!출근" 명령어 확인
+    if step == 1 and message.content.strip().startswith("!출근"):
+        await message.channel.send("✅ 출근 확인 완료! 다음 단계로 넘어갈게요 🎨")
+        user_tutorial_progress[user.id] = 2
+        await send_tutorial_step(message.channel, user, 2)
+
+    # 명령어 감지도 병행
+    await bot.process_commands(message)
 
 # --- 실행 ---
 @bot.event
