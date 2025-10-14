@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-# 신입 OT (인사팀 안내 버전, 멘션 체크 제거)
-# Step 1~4 전체 포함 / 자동포럼 / 24시간 후 삭제 / 문의 채널 안내
+# 신입 OT (인사팀 안내 버전) — Step2 트리거 안정화 + 멘션 분리 + 문구 수정
 
 import sys, types
 sys.modules["audioop"] = types.ModuleType("audioop")
@@ -26,7 +25,8 @@ CHANNEL_QNA_ID     = 1424270317777326250  # 문의 채널
 TUTORIAL_CATEGORY_ID = None
 
 STEP_DELAY = 10
-DELETE_DELAY = 86400  # 24시간 후 삭제
+STEP2_DELAY = 20     # Step2 트리거 20초 대기
+DELETE_DELAY = 86400 # 24시간 후 삭제
 
 user_ot_progress = {}
 sent_users = set()
@@ -39,7 +39,7 @@ def home(): return "신입OT 인사팀 봇 작동 중"
 def run_flask(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))
 def keep_alive(): Thread(target=run_flask, daemon=True).start()
 
-# --- 단계별 메시지 ---
+# --- 단계별 텍스트 ---
 OT_STEPS = {
     1: {
         "title": "🏢 **Step 1 : 출근하기**",
@@ -87,35 +87,58 @@ OT_STEPS = {
     }
 }
 
-# --- 안내 메시지 전송 ---
-async def send_ot_step(channel: discord.TextChannel, user: discord.Member, step: int):
+# --- Step 전송 함수 ---
+async def send_ot_step(channel, user, step):
     info = OT_STEPS[step]
     guild = channel.guild
     embed = discord.Embed(title=info["title"], description=info["desc"], color=0x00C9A7)
     embed.set_footer(text=f"그림친구 1팀 신입 OT • Step {step}/4")
     view = discord.ui.View()
-    url = None
 
+    # 단계별 버튼
     if step == 1:
-        url = f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"
-        view.add_item(discord.ui.Button(label="🫡 출근기록으로 이동", url=url))
+        view.add_item(discord.ui.Button(label="🫡 출근기록으로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
     elif step == 2:
-        url = f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"
-        view.add_item(discord.ui.Button(label="🎨 그림보고 구경하러 가기", url=url))
+        view.add_item(discord.ui.Button(label="🎨 그림보고 구경하러 가기", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"))
+        # Step 2 트리거 (20초 후)
+        asyncio.create_task(step2_trigger(user))
     elif step == 3:
-        url = f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"
-        view.add_item(discord.ui.Button(label="📊 출근기록으로 이동", url=url))
+        view.add_item(discord.ui.Button(label="📊 출근기록으로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
     elif step == 4:
-        url = f"https://discord.com/channels/{guild.id}/{CHANNEL_WEEKLY_ID}"
-        view.add_item(discord.ui.Button(label="📑 주간 포럼으로 이동", url=url))
+        view.add_item(discord.ui.Button(label="📑 주간 포럼으로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_WEEKLY_ID}"))
 
     await channel.send(embed=embed, view=view)
 
-# --- Step 전환 ---
+# --- Step2 트리거 (20초 후 다음단계) ---
+async def step2_trigger(user):
+    await asyncio.sleep(STEP2_DELAY)
+    tutorial_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
+    if not tutorial_ch: return
+    ch = bot.get_channel(tutorial_ch)
+    if not ch: return
+
+    # Step 2 완료 멘션 (별도 출력)
+    await ch.send(f"{user.mention} ✅ 잘 다녀오셨나요?")
+
+    embed = discord.Embed(
+        title="🎉 그림보고 탐방 완료!",
+        description=(
+            "다른 사람들의 그림을 구경하는 것만으로도 큰 공부예요 🎨\n"
+            "이제 당신도 직접 올려볼 차례예요!\n\n"
+            "🖼️ 낙서, 크로키, 모작, 연습 드로잉, 그림 연구 등 모두 좋아요!\n"
+            "완성작이 아니어도 충분히 의미 있는 기록이에요. ✨\n\n"
+            "이제 다음 단계로 넘어가볼까요?"
+        ),
+        color=0xFFD166
+    )
+    await ch.send(embed=embed)
+    await advance_step(user, 2)
+
+# --- Step 진행 함수 ---
 async def advance_step(user, current_step):
-    ot_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
-    if not ot_ch: return
-    ch = bot.get_channel(ot_ch)
+    ch_id = next((cid for cid, uid in channel_owner.items() if uid == user.id), None)
+    if not ch_id: return
+    ch = bot.get_channel(ch_id)
     nxt = current_step + 1
     user_ot_progress[user.id] = nxt
     await asyncio.sleep(STEP_DELAY)
@@ -128,17 +151,15 @@ async def create_private_ot_channel(guild, member):
         member: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
         guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True)
     }
-    category = guild.get_channel(TUTORIAL_CATEGORY_ID) if TUTORIAL_CATEGORY_ID else None
     channel = await guild.create_text_channel(
         name=f"{member.display_name}-입사도우미",
-        overwrites=overwrites,
-        category=category
+        overwrites=overwrites
     )
     channel_owner[channel.id] = member.id
 
     embed = discord.Embed(
         title="🎓 그림친구 1팀 신입 OT 안내",
-        description="안녕하세요! 인사팀입니다 💼\n\n지금부터 천천히 입사 OT를 진행하겠습니다.",
+        description="안녕하세요! 인사팀입니다 💼\n\n지금부터 천천히 **신입 OT를 진행하겠습니다.**",
         color=0x00B2FF
     )
     await channel.send(
@@ -159,7 +180,7 @@ class StartView(discord.ui.View):
         user_ot_progress[user.id] = 1
         await send_ot_step(interaction.channel, user, 1)
 
-# --- 역할 부여 시 자동 생성 ---
+# --- 역할 부여 시 OT 채널 자동 생성 ---
 @bot.event
 async def on_member_update(before, after):
     new_roles = [r for r in after.roles if r not in before.roles]
@@ -177,31 +198,29 @@ async def on_message(message):
     step = user_ot_progress.get(user.id)
     if not step: return
 
-    # STEP 1 : 출근
+    # Step 1 : !출근
     if step == 1 and message.content.strip().startswith("!출근") and message.channel.id == CHANNEL_CHECKIN_ID:
-        ot_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
-        if ot_ch:
-            ch = bot.get_channel(ot_ch)
+        ch = bot.get_channel(next((cid for cid, uid in channel_owner.items() if uid == user.id), None))
+        if ch:
+            await ch.send(f"{user.mention} ✅ 출근 완료!")
             embed = discord.Embed(
                 title="🎉 출근 완료!",
-                description=(f"좋아요 {user.mention}!\n\n"
-                             f"<#{CHANNEL_CHECKIN_ID}> 채널에서 출근을 완료했어요 🌅\n"
-                             "매일의 출근이 곧 당신의 루틴이 될 거예요.\n\n"
+                description=(f"<#{CHANNEL_CHECKIN_ID}> 채널에서 무사히 출근을 완료했어요 🌅\n"
+                             "매일의 출근이 당신의 루틴이 될 거예요.\n\n"
                              "이제 다음 단계로 넘어가볼까요?"),
                 color=0xFFD166
             )
             await ch.send(embed=embed)
             await advance_step(user, 1)
 
-    # STEP 3 : !보고서
+    # Step 3 : !보고서
     elif step == 3 and message.content.strip().startswith("!보고서") and message.channel.id == CHANNEL_CHECKIN_ID:
-        ot_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
-        if ot_ch:
-            ch = bot.get_channel(ot_ch)
+        ch = bot.get_channel(next((cid for cid, uid in channel_owner.items() if uid == user.id), None))
+        if ch:
+            await ch.send(f"{user.mention} ✅ 보고서 확인 완료!")
             embed = discord.Embed(
                 title="📊 보고서 확인 완료!",
-                description=(f"잘했어요 {user.mention}! 🎉\n\n"
-                             f"<#{CHANNEL_CHECKIN_ID}> 채널에서 보고서를 확인했네요.\n"
+                description=(f"<#{CHANNEL_CHECKIN_ID}> 채널에서 보고서를 확인했어요!\n"
                              "앞으로도 이곳에서 하루의 성과를 꾸준히 체크해봐요 🌱\n\n"
                              "이제 마지막 단계로 넘어가볼까요?"),
                 color=0x43B581
@@ -211,34 +230,34 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# --- Step4 : 자동 포럼 + 24시간 후 삭제 + 문의 안내 ---
+# --- Step4 : 포럼 + 문의 안내 + 24시간 후 삭제 ---
 @bot.event
 async def on_thread_create(thread):
     user = thread.owner
     if not user or user.bot: return
     step = user_ot_progress.get(user.id)
     if step == 4 and thread.parent_id == CHANNEL_WEEKLY_ID:
-        ot_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
-        if ot_ch:
-            ch = bot.get_channel(ot_ch)
+        ch = bot.get_channel(next((cid for cid, uid in channel_owner.items() if uid == user.id), None))
+        if ch:
+            await ch.send(f"{user.mention} 🎉 신입 OT 완료!")
             embed = discord.Embed(
                 title="🎉 신입 OT 완료!",
                 description=(f"이제 당신은 모든 준비를 마쳤어요! 🎨\n\n"
                              "매주 포럼에 기록을 남기며 멋진 루틴을 만들어봐요 🌱\n\n"
-                             f"혹시 진행 중 궁금한 점이나 오류가 있었다면 <#{CHANNEL_QNA_ID}> 채널로 문의해주세요 📨\n\n"
+                             f"혹시 궁금한 점이나 오류가 있다면 <#{CHANNEL_QNA_ID}> 채널로 문의해주세요 📨\n\n"
                              "이 채널은 **24시간 후 자동 삭제**됩니다 🕓"),
                 color=0x43B581
             )
             await ch.send(embed=embed)
+            asyncio.create_task(delete_after_24h(ch))
 
-            async def delayed_delete():
-                await asyncio.sleep(DELETE_DELAY)
-                try:
-                    await ch.delete(reason="신입 OT 완료 후 24시간 경과 자동삭제")
-                    print(f"🧹 {ch.name} 삭제 완료 (24h)")
-                except:
-                    pass
-            asyncio.create_task(delayed_delete())
+# --- 자동 삭제 함수 ---
+async def delete_after_24h(channel):
+    await asyncio.sleep(DELETE_DELAY)
+    try:
+        await channel.delete(reason="신입 OT 완료 후 24시간 경과 자동삭제")
+    except:
+        pass
 
 # --- 실행 ---
 @bot.event
