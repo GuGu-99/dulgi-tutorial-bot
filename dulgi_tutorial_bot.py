@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# dulgi-tutorial-bot : 서버 내 비공개 튜토리얼 버전
+# dulgi-tutorial-bot : 서버 내 1:1 튜토리얼 + 관리자 보고 완성버전
 
 import sys, types
 sys.modules["audioop"] = types.ModuleType("audioop")  # Python 3.13 대응
@@ -17,9 +17,12 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 user_tutorial_progress = {}
-FORUM_CHANNEL_ID = 1423360385225851011
-TARGET_ROLE_ID = 1426578319410728980  # 온보딩 완료 역할
-TUTORIAL_CATEGORY_ID = None  # 🔧 원하면 “튜토리얼용 카테고리” ID 넣기 (없으면 루트에 생성)
+FORUM_CHANNEL_ID = 1423360385225851011  # 주간-그림보고 채널
+TARGET_ROLE_ID = 1426578319410728980     # 온보딩 완료 역할
+LOG_CHANNEL_ID = 1426600994522112100     # ✅ 관리자 보고용 채널 ID (수정)
+TUTORIAL_CATEGORY_ID = None              # (선택) 튜토리얼용 카테고리 ID
+
+sent_users = set()
 
 # ===== Keep Alive =====
 app = Flask(__name__)
@@ -54,7 +57,7 @@ async def create_weekly_forum(member: discord.Member):
         print("⚠️ 포럼 생성 실패:", e)
     return None
 
-# ===== 튜토리얼 메시지 전송 =====
+# ===== 튜토리얼 단계 전송 =====
 async def send_tutorial_step(channel: discord.TextChannel, user: discord.Member, step: int):
     info = TUTORIAL_STEPS[step]
     embed = discord.Embed(title=info["title"], description=info["desc"], color=0x00C9A7)
@@ -71,7 +74,7 @@ class StartView(discord.ui.View):
         user = interaction.user
         user_tutorial_progress[user.id] = 1
         await send_tutorial_step(interaction.channel, user, 1)
-
+        await interaction.followup.send("📩 Step 1 안내를 시작할게요!", ephemeral=True)
 
 class StepView(discord.ui.View):
     def __init__(self, step:int): super().__init__(timeout=None); self.step=step
@@ -84,10 +87,21 @@ class StepView(discord.ui.View):
         nxt = cur + 1
 
         if nxt == 5:
+            # 완료 처리
             thread = await create_weekly_forum(user)
             msg = "🎉 튜토리얼 완료! 이제 매주 피드백을 남겨보세요."
-            if thread: msg += f"\n🗂️ 포럼이 생성되었어요! {thread.mention}"
+            if thread:
+                msg += f"\n🗂️ 포럼이 생성되었어요! {thread.mention}"
             await interaction.followup.send(msg)
+
+            # ✅ 관리자 보고 채널 알림
+            log_channel = bot.get_channel(LOG_CHANNEL_ID)
+            if log_channel:
+                await log_channel.send(
+                    f"✅ **{user.display_name}** 님이 튜토리얼을 완료했습니다!\n"
+                    f"📅 포럼: {thread.mention if thread else '생성 실패'}"
+                )
+
             await interaction.channel.delete(reason="튜토리얼 완료됨 ✅")
             user_tutorial_progress[user.id] = "done"
             return
@@ -95,7 +109,7 @@ class StepView(discord.ui.View):
         user_tutorial_progress[user.id] = nxt
         await send_tutorial_step(interaction.channel, user, nxt)
 
-# ===== 임시 채널 생성 함수 =====
+# ===== 개인 튜토리얼 채널 생성 =====
 async def create_private_tutorial_channel(guild: discord.Guild, member: discord.Member):
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -109,11 +123,21 @@ async def create_private_tutorial_channel(guild: discord.Guild, member: discord.
         category=category,
         reason="튜토리얼 개인 채널 생성"
     )
+    # 멘션 포함 알림 메시지 (푸시 알림 발생)
+    await channel.send(
+        f"{member.mention} 👋 환영합니다!\n"
+        f"이곳은 둘비서와 함께 진행하는 **튜토리얼 채널**이에요 🎨\n"
+        f"아래 버튼으로 시작해볼까요?",
+        embed=discord.Embed(
+            title="🎓 그림친구 1팀 입사 오리엔테이션",
+            description="둘비서가 안내를 시작합니다 💼",
+            color=0x00B2FF
+        ),
+        view=StartView()
+    )
     return channel
 
 # ===== 역할 부여 시 트리거 =====
-sent_users = set()
-
 @bot.event
 async def on_member_update(before, after):
     new_roles = [r for r in after.roles if r not in before.roles]
@@ -123,26 +147,19 @@ async def on_member_update(before, after):
             return
         sent_users.add(after.id)
 
-        # 1️⃣ 개인 채널 생성
-        channel = await create_private_tutorial_channel(after.guild, after)
-
-        # 2️⃣ 튜토리얼 시작 메시지 전송
-        embed = discord.Embed(
-            title=f"👋 {after.display_name}님, 그림친구 1팀에 오신 걸 환영합니다!",
-            description="이제 모든 준비가 완료되었어요 🎨\n둘비서가 오리엔테이션을 도와드릴게요 💼",
-            color=0x00B2FF
-        )
-        await channel.send(embed=embed, view=StartView())
-        print(f"✅ 튜토리얼 채널 생성 → {channel.name}")
+        await create_private_tutorial_channel(after.guild, after)
+        print(f"✅ 튜토리얼 채널 생성 및 안내 전송 → {after.display_name}")
 
 # ===== 봇 실행 =====
 @bot.event
 async def on_ready():
     keep_alive()
-    bot.add_view(StartView())
+    bot.add_view(StartView())  # Persistent View 유지
     print(f"✅ 로그인 완료: {bot.user} (dulgi-tutorial-bot)")
 
 if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
-    if TOKEN: bot.run(TOKEN)
-    else: print("⚠️ DISCORD_BOT_TOKEN 미설정")
+    if TOKEN:
+        bot.run(TOKEN)
+    else:
+        print("⚠️ DISCORD_BOT_TOKEN 미설정")
