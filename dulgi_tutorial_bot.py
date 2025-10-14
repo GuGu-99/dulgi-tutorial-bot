@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# dulgi-tutorial-bot : Step 2 리디자인 + UX 텀 강화 (10초)
+# dulgi-tutorial-bot : Step 4 자동포럼 + 24시간 후 삭제 + 채널명 변경
 
 import sys, types
 sys.modules["audioop"] = types.ModuleType("audioop")  # Python 3.13 대응
@@ -23,7 +23,8 @@ CHANNEL_DAILY_ID   = 1423170386811682908
 CHANNEL_WEEKLY_ID  = 1423360385225851011
 TUTORIAL_CATEGORY_ID = None
 
-STEP_DELAY = 10  # STEP 간 텀 10초
+STEP_DELAY = 10         # 단계 간 텀
+DELETE_DELAY = 86400     # 24시간 (튜토리얼 채널 삭제 대기)
 
 user_tutorial_progress = {}
 sent_users = set()
@@ -36,7 +37,7 @@ def home(): return "dulgi-tutorial-bot running"
 def run_flask(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))
 def keep_alive(): Thread(target=run_flask, daemon=True).start()
 
-# --- 시각적으로 리디자인된 STEP 텍스트 ---
+# --- 튜토리얼 단계 설명 ---
 TUTORIAL_STEPS = {
     1: {
         "title": "🏢 **Step 1 : 출근하기**",
@@ -54,7 +55,7 @@ TUTORIAL_STEPS = {
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
             "**오늘 하루 그림 공부를 어떤 형태로든 올려보세요! ✏️**\n\n"
-            "하지만 지금은 부담 갖지 말고, 우선 선배들이 어떻게 올리고 있는지 구경하러 가볼까요? 👀\n\n"
+            "지금은 부담 갖지 말고, 우선 선배들이 어떻게 올리고 있는지 구경하러 가볼까요? 👀\n"
             "━━━━━━━━━━━━━━━━━━━\n"
             "> 아래 버튼을 눌러 ‘#일일-그림보고’ 채널로 이동해보세요!"
         )
@@ -64,7 +65,7 @@ TUTORIAL_STEPS = {
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
             "`!보고서` 명령어를 입력해 이번 주 점수를 확인해보세요 🌱\n"
-            "━━━━━━━━━━━━━━━━━━━\n"
+            "━━━━━━━━━━━━━━━━━━━"
         )
     },
     4: {
@@ -81,7 +82,7 @@ TUTORIAL_STEPS = {
     }
 }
 
-# --- 단계별 안내 전송 ---
+# --- 단계별 메시지 전송 ---
 async def send_tutorial_step(channel: discord.TextChannel, user: discord.Member, step: int):
     info = TUTORIAL_STEPS[step]
     guild = channel.guild
@@ -98,7 +99,6 @@ async def send_tutorial_step(channel: discord.TextChannel, user: discord.Member,
     elif step == 2:
         url = f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"
         view.add_item(discord.ui.Button(label="🎨 그림보고 구경하러 가기", url=url))
-        # 30초 후 자동으로 Step3 진행
         async def delayed_trigger():
             await asyncio.sleep(30)
             tutorial_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
@@ -131,12 +131,11 @@ async def send_tutorial_step(channel: discord.TextChannel, user: discord.Member,
 
     await channel.send(content=f"{user.mention}", embed=embed, view=view)
 
-# --- 다음 단계 버튼 ---
+# --- Step3 → Step4용 버튼 ---
 class StepNextButton(discord.ui.Button):
     def __init__(self, step):
         super().__init__(label="다음 단계", style=discord.ButtonStyle.primary)
         self.step = step
-
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         user = interaction.user
@@ -145,7 +144,7 @@ class StepNextButton(discord.ui.Button):
         await asyncio.sleep(STEP_DELAY)
         await send_tutorial_step(interaction.channel, user, nxt)
 
-# --- 튜토리얼 시작 버튼 ---
+# --- 튜토리얼 시작 ---
 class StartView(discord.ui.View):
     def __init__(self): super().__init__(timeout=None)
     @discord.ui.button(label="시작하기", style=discord.ButtonStyle.green)
@@ -155,7 +154,7 @@ class StartView(discord.ui.View):
         user_tutorial_progress[user.id] = 1
         await send_tutorial_step(interaction.channel, user, 1)
 
-# --- 개인 튜토리얼 채널 생성 ---
+# --- 개인 채널 생성 ---
 async def create_private_tutorial_channel(guild:discord.Guild, member:discord.Member):
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -164,7 +163,7 @@ async def create_private_tutorial_channel(guild:discord.Guild, member:discord.Me
     }
     category = guild.get_channel(TUTORIAL_CATEGORY_ID) if TUTORIAL_CATEGORY_ID else None
     channel = await guild.create_text_channel(
-        name="당신만의-둘비서",
+        name=f"{member.display_name}-입사도우미",
         overwrites=overwrites,
         category=category,
         reason="튜토리얼 개인 채널 생성"
@@ -183,26 +182,42 @@ async def create_private_tutorial_channel(guild:discord.Guild, member:discord.Me
     )
     return channel
 
-# --- 역할 부여 시 튜토리얼 시작 ---
+# --- 포럼 자동 생성 함수 ---
+async def create_weekly_forum(member: discord.Member):
+    try:
+        forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
+        if isinstance(forum_channel, discord.ForumChannel):
+            img_path = os.path.join(os.path.dirname(__file__), "Forum image.png")
+            file = discord.File(img_path, filename="Forum image.png") if os.path.exists(img_path) else None
+            thread = await forum_channel.create_thread(
+                name=f"[{member.display_name}] 주간 피드백",
+                content="이번 주 잘한 점 ✨ / 아쉬운 점 💧 3가지씩 적어보세요!",
+                file=file
+            )
+            print(f"✅ 포럼 생성 완료 → {thread.name}")
+            return thread
+    except Exception as e:
+        print("⚠️ 포럼 생성 실패:", e)
+    return None
+
+# --- 역할 부여 시 트리거 ---
 @bot.event
 async def on_member_update(before, after):
     new_roles = [r for r in after.roles if r not in before.roles]
     if any(r.id == TARGET_ROLE_ID for r in new_roles):
-        if after.id in sent_users:
-            return
+        if after.id in sent_users: return
         sent_users.add(after.id)
         await create_private_tutorial_channel(after.guild, after)
         print(f"✅ 튜토리얼 채널 생성 → {after.display_name}")
 
-# --- 메시지 트리거 감지 ---
+# --- 메시지 트리거 ---
 @bot.event
 async def on_message(message: discord.Message):
-    if message.author.bot:
-        return
+    if message.author.bot: return
     user = message.author
     step = user_tutorial_progress.get(user.id)
 
-    # Step 1 : 출근 감지
+    # Step1 : 출근 감지
     if step == 1 and message.content.strip().startswith("!출근") and message.channel.id == CHANNEL_CHECKIN_ID:
         tutorial_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
         if tutorial_ch:
@@ -224,30 +239,40 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
-# --- 주간 포럼 생성 감지 ---
+# --- Step4 완료 시 포럼 자동 생성 + 삭제 예약 ---
 @bot.event
 async def on_thread_create(thread):
     user = thread.owner
-    if not user or user.bot:
-        return
+    if not user or user.bot: return
     step = user_tutorial_progress.get(user.id)
     if step == 4 and thread.parent_id == CHANNEL_WEEKLY_ID:
         tutorial_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
         if tutorial_ch:
             ch = bot.get_channel(tutorial_ch)
             embed = discord.Embed(
-                title="🎉 주간 기록 완료!",
+                title="🎉 튜토리얼 완료!",
                 description=(
-                    f"잘하셨어요 {user.mention}! 이제 당신은 스스로를 꾸준히 관리하는 아티스트예요 🔥\n"
-                    "매주 기록하며 더 멋진 성장 그래프를 만들어봐요. 📈\n\n"
-                    "튜토리얼을 모두 완료했습니다! 🎨"
+                    f"잘하셨어요 {user.mention}! 당신은 이제 스스로 성장하는 아티스트예요 🔥\n\n"
+                    "매주 포럼에 기록하며 꾸준히 발전해보세요 📈\n\n"
+                    "이 채널은 **24시간 후 자동 삭제**됩니다 🕓"
                 ),
                 color=0x43B581
             )
             await ch.send(embed=embed)
+
             log_ch = bot.get_channel(LOG_CHANNEL_ID)
             if log_ch:
                 await log_ch.send(f"✅ **{user.display_name}** 튜토리얼 완료 🎉")
+
+            # ✅ 24시간 후 자동 삭제 예약
+            async def delayed_delete():
+                await asyncio.sleep(DELETE_DELAY)
+                try:
+                    await ch.delete(reason="튜토리얼 완료 후 24시간 경과 자동삭제")
+                    print(f"🧹 {ch.name} 채널 삭제 완료 (24h passed)")
+                except:
+                    pass
+            asyncio.create_task(delayed_delete())
 
 # --- 실행 ---
 @bot.event
