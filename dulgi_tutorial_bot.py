@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# dulgi-tutorial-bot : Step 2 & 4 UX 완성버전 (Step1 구조 통합형)
+# dulgi-tutorial-bot : Step 2 리디자인 + UX 텀 강화 (10초)
 
 import sys, types
 sys.modules["audioop"] = types.ModuleType("audioop")  # Python 3.13 대응
@@ -23,6 +23,8 @@ CHANNEL_DAILY_ID   = 1423170386811682908
 CHANNEL_WEEKLY_ID  = 1423360385225851011
 TUTORIAL_CATEGORY_ID = None
 
+STEP_DELAY = 10  # STEP 간 텀 10초
+
 user_tutorial_progress = {}
 sent_users = set()
 channel_owner = {}
@@ -34,37 +36,47 @@ def home(): return "dulgi-tutorial-bot running"
 def run_flask(): app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))
 def keep_alive(): Thread(target=run_flask, daemon=True).start()
 
-# --- 단계별 UX 내용 ---
+# --- 시각적으로 리디자인된 STEP 텍스트 ---
 TUTORIAL_STEPS = {
     1: {
-        "title": "🏢 Step 1 : 출근하기",
+        "title": "🏢 **Step 1 : 출근하기**",
         "desc": (
-            "!출근 명령어를 아래 채널에서 입력해보세요!\n\n"
-            "✳️ 명령어 입력 방법\n느낌표 + \"출근\"\n예: `!출근`\n\n"
-            "출근은 하루의 시작이자, 꿈을 향한 첫 걸음이에요 🌅"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "**!출근 명령어를 아래 채널에서 입력해보세요!**\n\n"
+            "✳️ **명령어 입력 방법**\n"
+            "느낌표 + `출근`\n예: `!출근`\n"
+            "━━━━━━━━━━━━━━━━━━━\n\n"
+            "> 출근은 하루의 시작이자, 꿈을 향한 첫 걸음이에요 🌅"
         )
     },
     2: {
-        "title": "🎨 Step 2 : 일일 그림보고",
+        "title": "🎨 **Step 2 : 일일 그림보고**",
         "desc": (
-            "오늘 하루 그림 공부를 어떤 형태로든 올려보세요! ✏️\n\n"
-            "🖼️ 낙서, 크로키, 모작, 연습 드로잉, 그림 연구 등 모두 좋아요!\n"
-            "완성작이 아니어도 충분히 의미 있는 기록이에요. ✨\n\n"
-            "아래 샘플 이미지를 참고해서 ‘#일일-그림보고’ 채널에 올려보세요."
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "**오늘 하루 그림 공부를 어떤 형태로든 올려보세요! ✏️**\n\n"
+            "하지만 지금은 부담 갖지 말고, 우선 선배들이 어떻게 올리고 있는지 구경하러 가볼까요? 👀\n\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "> 아래 버튼을 눌러 ‘#일일-그림보고’ 채널로 이동해보세요!"
         )
     },
     3: {
-        "title": "📊 Step 3 : 보고서 보기",
-        "desc": "`!보고서` 로 이번 주 점수를 확인해요 🌱"
+        "title": "📊 **Step 3 : 보고서 보기**",
+        "desc": (
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "`!보고서` 명령어를 입력해 이번 주 점수를 확인해보세요 🌱\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+        )
     },
     4: {
-        "title": "🗂️ Step 4 : 주간 그림보고",
+        "title": "🗂️ **Step 4 : 주간 그림보고**",
         "desc": (
-            "이제 한 주를 정리해볼 시간이에요 📅\n\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "**이제 한 주를 정리해볼 시간이에요 📅**\n\n"
             "‘#주간-그림보고’ 채널에서 본인 닉네임으로 포럼을 만들어보세요!\n"
-            "예: [둘기] 10월 2주차 피드백 ✨\n\n"
-            "잘한 점 3가지 / 아쉬운 점 3가지 를 적고 이번 주를 돌아보세요.\n"
-            "완벽하지 않아도 좋아요, 기록이 곧 성장이에요. 🌱"
+            "예: `[둘기] 10월 2주차 피드백 ✨`\n\n"
+            "잘한 점 3가지 / 아쉬운 점 3가지를 적고 이번 주를 돌아보세요.\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "> 완벽하지 않아도 괜찮아요, 기록이 곧 성장이에요 🌱"
         )
     }
 }
@@ -78,19 +90,37 @@ async def send_tutorial_step(channel: discord.TextChannel, user: discord.Member,
 
     view = discord.ui.View()
     url = None
-    file = None
 
-    # Step별 버튼 설정
     if step == 1:
         url = f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"
         view.add_item(discord.ui.Button(label="🫡 출근기록으로 이동", url=url))
 
     elif step == 2:
-        img_path = os.path.join(os.path.dirname(__file__), "sample 1.png")
-        if os.path.exists(img_path):
-            file = discord.File(img_path, filename="sample 1.png")
         url = f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"
-        view.add_item(discord.ui.Button(label="🖼️ 그림 올리러 가기", url=url))
+        view.add_item(discord.ui.Button(label="🎨 그림보고 구경하러 가기", url=url))
+        # 30초 후 자동으로 Step3 진행
+        async def delayed_trigger():
+            await asyncio.sleep(30)
+            tutorial_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
+            if tutorial_ch:
+                ch = bot.get_channel(tutorial_ch)
+                if ch:
+                    embed2 = discord.Embed(
+                        title="🎉 잘 다녀오셨어요!",
+                        description=(
+                            "다른 사람들의 그림을 구경하는 것만으로도 큰 공부예요 🎨\n"
+                            "이제 당신도 직접 올려볼 차례예요!\n\n"
+                            "🖼️ 낙서, 크로키, 모작, 연습 드로잉, 그림 연구 등 모두 좋아요!\n"
+                            "완성작이 아니어도 충분히 의미 있는 기록이에요. ✨\n\n"
+                            "그럼 다음 단계로 넘어가볼까요?"
+                        ),
+                        color=0xFFD166
+                    )
+                    await ch.send(embed=embed2)
+                    await asyncio.sleep(STEP_DELAY)
+                    user_tutorial_progress[user.id] = 3
+                    await send_tutorial_step(ch, user, 3)
+        asyncio.create_task(delayed_trigger())
 
     elif step == 3:
         view.add_item(StepNextButton(step))
@@ -99,7 +129,7 @@ async def send_tutorial_step(channel: discord.TextChannel, user: discord.Member,
         url = f"https://discord.com/channels/{guild.id}/{CHANNEL_WEEKLY_ID}"
         view.add_item(discord.ui.Button(label="📑 주간 포럼으로 이동", url=url))
 
-    await channel.send(content=f"{user.mention}", embed=embed, view=view, file=file if file else None)
+    await channel.send(content=f"{user.mention}", embed=embed, view=view)
 
 # --- 다음 단계 버튼 ---
 class StepNextButton(discord.ui.Button):
@@ -112,7 +142,7 @@ class StepNextButton(discord.ui.Button):
         user = interaction.user
         nxt = self.step + 1
         user_tutorial_progress[user.id] = nxt
-        await asyncio.sleep(5)
+        await asyncio.sleep(STEP_DELAY)
         await send_tutorial_step(interaction.channel, user, nxt)
 
 # --- 튜토리얼 시작 버튼 ---
@@ -188,29 +218,9 @@ async def on_message(message: discord.Message):
                 color=0xFFD166
             )
             await ch.send(embed=embed)
-            await asyncio.sleep(5)
+            await asyncio.sleep(STEP_DELAY)
             user_tutorial_progress[user.id] = 2
             await send_tutorial_step(ch, user, 2)
-
-    # Step 2 : 그림 업로드 감지
-    elif step == 2 and message.channel.id == CHANNEL_DAILY_ID and message.attachments:
-        tutorial_ch = next((ch for ch, uid in channel_owner.items() if uid == user.id), None)
-        if tutorial_ch:
-            ch = bot.get_channel(tutorial_ch)
-            embed = discord.Embed(
-                title="🎉 오늘의 그림 기록 완료!",
-                description=(
-                    "좋아요! 오늘 하루의 그림 공부를 남겼어요 🎨\n"
-                    "매일매일 작은 기록이라도 쌓는 것이 성장의 핵심이에요 🌱\n\n"
-                    "그림은 완성보다 ‘꾸준한 기록’이 더 중요하답니다 ✏️\n"
-                    "이제 다음 단계로 넘어가볼까요?"
-                ),
-                color=0xFFD166
-            )
-            await ch.send(embed=embed)
-            await asyncio.sleep(5)
-            user_tutorial_progress[user.id] = 3
-            await send_tutorial_step(ch, user, 3)
 
     await bot.process_commands(message)
 
