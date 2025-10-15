@@ -26,7 +26,7 @@ CHANNEL_QNA_ID     = 1424270317777326250
 TUTORIAL_CATEGORY_ID = None
 
 STEP_DELAY = 10
-STEP2_DELAY = 25
+STEP2_DELAY = 20
 DELETE_DELAY = 86400  # 24시간 후 삭제
 
 user_ot_progress = {}
@@ -301,3 +301,4 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     else:
         print("⚠️ DISCORD_BOT_TOKEN 미설정")
+
