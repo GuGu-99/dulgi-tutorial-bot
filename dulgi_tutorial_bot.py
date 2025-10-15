@@ -125,29 +125,14 @@ async def send_ot_step(channel, user, step):
     embed.set_footer(text=f"그림친구 1팀 신입 OT • Step {step}/4")
     view = discord.ui.View()
 
-if step == 1:
-    view.add_item(discord.ui.Button(
-        label="🫡 출근기록으로 이동",
-        style=discord.ButtonStyle.success,
-        url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"
-    ))
-
-elif step == 2:
-    daily_url = f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"
-    view.add_item(discord.ui.Button(
-        label="🎨 그림보고 구경하러 가기",
-        style=discord.ButtonStyle.success,
-        url=daily_url
-    ))
-    asyncio.create_task(trigger_step2_after_delay(user))
-
-elif step == 3:
-    view.add_item(discord.ui.Button(
-        label="📊 출근기록으로 이동",
-        style=discord.ButtonStyle.success,
-        url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"
-    ))
-
+    if step == 1:
+        view.add_item(discord.ui.Button(label="🫡 출근-보고서로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
+    elif step == 2:
+        daily_url = f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"
+        view.add_item(discord.ui.Button(label="🎨 그림보고 구경하러 가기", style=discord.ButtonStyle.link, url=daily_url))
+        asyncio.create_task(trigger_step2_after_delay(user))
+    elif step == 3:
+        view.add_item(discord.ui.Button(label="📊 출근-보고서로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
     elif step == 4:
         view.add_item(Step4Button(user))
 
@@ -157,96 +142,24 @@ elif step == 3:
 # --- Step4 : 포럼 생성 버튼 ---
 class Step4Button(discord.ui.Button):
     def __init__(self, user):
-        super().__init__(
-            label="📑 주간 포럼으로 이동",
-            style=discord.ButtonStyle.success
-        )
+        super().__init__(label="📑 주간 포럼으로 이동", style=discord.ButtonStyle.success)
         self.user = user
-        self.clicked = False  # ✅ 생성 중복 방지 플래그
 
     async def callback(self, interaction: discord.Interaction):
-        if self.clicked:
-            await interaction.response.send_message(
-                "이미 포럼이 생성되었어요 ✅", ephemeral=True
-            )
-            return
-
-        self.clicked = True
         await interaction.response.defer()
-        self.disabled = True
-        await interaction.message.edit(view=self.view)  # 버튼 비활성화
-
         user = self.user
         await asyncio.sleep(10)  # 클릭 후 10초 텀
 
         forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
-        if not isinstance(forum_channel, discord.ForumChannel):
-            await interaction.followup.send("⚠️ 포럼 채널을 찾을 수 없어요.", ephemeral=True)
-            return
-
-        # ✅ 포럼 생성 (이미지 제거)
-        thread = await forum_channel.create_thread(
-            name=f"[{user.display_name}] 주간 피드백",
-            content=f"{user.mention}님을 위한 주간 피드백 공간이에요 🎨"
-        )
-        print(f"✅ 포럼 생성 완료: {thread.name}")
-
-        # ✅ 안내 메시지 작성
-        feedback_text = (
-            "✅ **목표**\n\n"
-            "한주간 내가 그림 관련해서 한 것들을 정리하고\n"
-            "스스로 피드백을 진행한다\n\n"
-            "📔 **방법**\n"
-            "자신의 디스코드 닉네임으로 '새 포스트'를 만들고, 아래 양식으로 작성해주세요.\n"
-            "(매일 하면 더 좋아요! 자유롭게 블로그처럼 이용해도 됩니다 🥰)\n\n"
-            "**⚠️ 주의사항**\n"
-            "자기비하가 아닌, 제3자의 시선으로 관찰하듯 피드백해주세요!\n\n"
-            "━━━━━━━━━━━━━━━\n"
-            "**작성 양식 예시**\n\n"
-            "[한 주간 진행한 것들]\n\n"
-            "[잘한 점] (3가지 이상)\n"
-            "1.\n2.\n3.\n\n"
-            "[개선해야 할 점] (3가지 이상)\n"
-            "1.\n2.\n3.\n\n"
-            "[개선 방법]\n- \n- \n━━━━━━━━━━━━━━━"
-        )
-
-        msg = await thread.send(f"{user.mention}\n{feedback_text}")
-
-        # ✅ 7일(604800초) 후 자동 삭제
-        async def delete_feedback_message():
-            await asyncio.sleep(604800)
-            try:
-                await msg.delete()
-                print(f"🗑️ 피드백 안내 메시지 자동 삭제 완료 ({user.display_name})")
-            except:
-                pass
-        asyncio.create_task(delete_feedback_message())
-
-        # ✅ 20초 뒤 입사도우미 채널에 안내
-        async def send_followup_to_dm():
-            await asyncio.sleep(20)
-            ch_id = next((cid for cid, uid in channel_owner.items() if uid == user.id), None)
-            if ch_id:
-                ch = bot.get_channel(ch_id)
-                if ch:
-                    await ch.send(f"{user.mention} 🪶 여러분만의 **주간 그림 보고서 방**이 생성되었어요!")
-                    await asyncio.sleep(1)
-                    embed = discord.Embed(
-                        title="📔 주간 보고서 안내",
-                        description=(
-                            "새로운 포럼이 열렸어요 🎨\n"
-                            "썸네일 이미지를 자유롭게 꾸며도 좋고,\n"
-                            "예시가 궁금하다면 [여기를 참고하세요](https://discord.com/channels/1310854848442269767/1426954981638013049/1426954981638013049)\n\n"
-                            "매주 한 번씩은 꼭 작성해주세요!\n"
-                            "작성하는 그 순간, 이미 성장하고 있는 거예요 🌱"
-                        ),
-                        color=0x43B581
-                    )
-                    await ch.send(embed=embed)
-
-        asyncio.create_task(send_followup_to_dm())
-
+        if isinstance(forum_channel, discord.ForumChannel):
+            img_path = os.path.join(os.path.dirname(__file__), "Forum image.png")
+            file = discord.File(img_path, filename="Forum image.png") if os.path.exists(img_path) else None
+            thread = await forum_channel.create_thread(
+                name=f"[{user.display_name}] 주간 피드백",
+                content="이번 주 잘한 점 ✨ / 아쉬운 점 💧 3가지씩 적어보세요!",
+                file=file
+            )
+            print(f"✅ 포럼 생성 완료: {thread.name}")
 
         ch_id = next((cid for cid, uid in channel_owner.items() if uid == user.id), None)
         if ch_id:
@@ -388,5 +301,4 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     else:
         print("⚠️ DISCORD_BOT_TOKEN 미설정")
-
 
