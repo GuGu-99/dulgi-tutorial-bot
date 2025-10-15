@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # 신입 OT (인사팀 안내 버전)
-# Step2 버튼 클릭 기반 트리거 / Step4 포럼 생성 버튼 / 각 단계 텀 10초
+# Step2 링크 오류 수정 / 트리거 개선 / Step 간 텀 10초 적용
 
 import sys, types
 sys.modules["audioop"] = types.ModuleType("audioop")
@@ -94,33 +94,44 @@ async def send_ot_step(channel, user, step):
     embed.set_footer(text=f"그림친구 1팀 신입 OT • Step {step}/4")
     view = discord.ui.View()
 
-    # Step별 버튼
     if step == 1:
-        view.add_item(discord.ui.Button(label="🫡 출근기록으로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
+        view.add_item(discord.ui.Button(label="🫡 출근기록으로 이동",
+                                        style=discord.ButtonStyle.link,
+                                        url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
     elif step == 2:
-        view.add_item(Step2Button(user))
+        daily_url = f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"
+        view.add_item(discord.ui.Button(label="🎨 그림보고 열기", style=discord.ButtonStyle.link, url=daily_url))
+        view.add_item(Step2ConfirmButton(user))
     elif step == 3:
-        view.add_item(discord.ui.Button(label="📊 출근기록으로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
+        view.add_item(discord.ui.Button(label="📊 출근기록으로 이동",
+                                        style=discord.ButtonStyle.link,
+                                        url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
     elif step == 4:
         view.add_item(Step4Button(user))
 
     await channel.send(embed=embed, view=view)
 
-# --- Step2 : 그림보고 버튼 클릭 후 20초 후 다음단계 ---
-class Step2Button(discord.ui.Button):
-    def __init__(self, user):
-        super().__init__(label="🎨 그림보고 구경하러 가기", style=discord.ButtonStyle.primary, url=f"https://discord.com/channels/0/{CHANNEL_DAILY_ID}")
+# --- Step2 확인 버튼 ---
+class Step2ConfirmButton(discord.ui.Button):
+    def __init__(self, user: discord.Member):
+        super().__init__(label="✅ 이동했어요", style=discord.ButtonStyle.primary)
         self.user = user
+
     async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("본인만 진행 가능한 버튼이에요 🙏", ephemeral=True)
+            return
+
         await interaction.response.defer()
-        await asyncio.sleep(STEP2_DELAY)
         user = self.user
+        await asyncio.sleep(STEP2_DELAY)
+
         ch_id = next((cid for cid, uid in channel_owner.items() if uid == user.id), None)
         if not ch_id: return
         ch = bot.get_channel(ch_id)
         if not ch: return
 
-        await asyncio.sleep(10)  # ✅ 멘션 전 10초 텀
+        await asyncio.sleep(10)  # 멘션 전 텀
         await ch.send(f"{user.mention} ✅ 잘 다녀오셨나요?")
         embed = discord.Embed(
             title="🎉 그림보고 탐방 완료!",
@@ -138,15 +149,16 @@ class Step2Button(discord.ui.Button):
         await send_ot_step(ch, user, 3)
         user_ot_progress[user.id] = 3
 
-# --- Step4 : 포럼 생성 버튼 ---
+# --- Step4 포럼 버튼 ---
 class Step4Button(discord.ui.Button):
     def __init__(self, user):
         super().__init__(label="📑 주간 포럼으로 이동", style=discord.ButtonStyle.success)
         self.user = user
+
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
         user = self.user
-        await asyncio.sleep(10)  # ✅ 클릭 후 약간의 대기
+        await asyncio.sleep(10)
 
         forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
         if isinstance(forum_channel, discord.ForumChannel):
@@ -177,7 +189,7 @@ class Step4Button(discord.ui.Button):
             await ch.send(embed=embed)
             asyncio.create_task(delete_after_24h(ch))
 
-# --- Step1 & Step3 메시지 트리거 ---
+# --- Step1 / Step3 메시지 트리거 ---
 @bot.event
 async def on_message(message):
     if message.author.bot: return
@@ -185,12 +197,12 @@ async def on_message(message):
     step = user_ot_progress.get(user.id)
     if not step: return
 
-    # Step1 : !출근
+    # Step1
     if step == 1 and message.content.strip().startswith("!출근") and message.channel.id == CHANNEL_CHECKIN_ID:
         ch_id = next((cid for cid, uid in channel_owner.items() if uid == user.id), None)
         if not ch_id: return
         ch = bot.get_channel(ch_id)
-        await asyncio.sleep(10)  # ✅ 트리거 후 10초 텀
+        await asyncio.sleep(10)
         await ch.send(f"{user.mention} ✅ 출근 완료!")
         embed = discord.Embed(
             title="🎉 출근 완료!",
@@ -204,12 +216,12 @@ async def on_message(message):
         await send_ot_step(ch, user, 2)
         user_ot_progress[user.id] = 2
 
-    # Step3 : !보고서
+    # Step3
     elif step == 3 and message.content.strip().startswith("!보고서") and message.channel.id == CHANNEL_CHECKIN_ID:
         ch_id = next((cid for cid, uid in channel_owner.items() if uid == user.id), None)
         if not ch_id: return
         ch = bot.get_channel(ch_id)
-        await asyncio.sleep(10)  # ✅ 트리거 후 10초 텀
+        await asyncio.sleep(10)
         await ch.send(f"{user.mention} ✅ 보고서 확인 완료!")
         embed = discord.Embed(
             title="📊 보고서 확인 완료!",
@@ -225,7 +237,7 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# --- 자동 삭제 함수 ---
+# --- 자동 삭제 ---
 async def delete_after_24h(channel):
     await asyncio.sleep(DELETE_DELAY)
     try:
@@ -234,7 +246,7 @@ async def delete_after_24h(channel):
     except:
         pass
 
-# --- 개인 OT 채널 생성 ---
+# --- OT 채널 생성 ---
 async def create_private_ot_channel(guild, member):
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(view_channel=False),
@@ -270,7 +282,7 @@ class StartView(discord.ui.View):
         user_ot_progress[user.id] = 1
         await send_ot_step(interaction.channel, user, 1)
 
-# --- 역할 부여 시 자동 OT 채널 생성 ---
+# --- 역할 부여 시 자동 생성 ---
 @bot.event
 async def on_member_update(before, after):
     new_roles = [r for r in after.roles if r not in before.roles]
