@@ -69,7 +69,7 @@ OT_STEPS = {
             "**오늘 하루의 성과를 확인해볼까요?**\n\n"
             "✳️ **명령어 입력 방법**\n"
             "느낌표 + `보고서`\n예: `!보고서`\n\n"
-            "아래 버튼을 눌러 `#출근기록` 채널로 이동 후 명령어를 입력해보세요! 🌱\n"
+            "아래 버튼을 눌러 `#출근-보고서` 채널로 이동 후 명령어를 입력해보세요! 🌱\n"
             "━━━━━━━━━━━━━━━━━━━"
         )
     },
@@ -126,13 +126,13 @@ async def send_ot_step(channel, user, step):
     view = discord.ui.View()
 
     if step == 1:
-        view.add_item(discord.ui.Button(label="🫡 출근기록으로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
+        view.add_item(discord.ui.Button(label="🫡 출근-보고서로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
     elif step == 2:
         daily_url = f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"
         view.add_item(discord.ui.Button(label="🎨 그림보고 구경하러 가기", style=discord.ButtonStyle.link, url=daily_url))
         asyncio.create_task(trigger_step2_after_delay(user))
     elif step == 3:
-        view.add_item(discord.ui.Button(label="📊 출근기록으로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
+        view.add_item(discord.ui.Button(label="📊 출근-보고서로 이동", url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
     elif step == 4:
         view.add_item(Step4Button(user))
 
@@ -301,4 +301,5 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     else:
         print("⚠️ DISCORD_BOT_TOKEN 미설정")
+
 
