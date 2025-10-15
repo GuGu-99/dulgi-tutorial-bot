@@ -103,8 +103,17 @@ async def send_ot_step(channel, user, step):
                                         style=discord.ButtonStyle.link,
                                         url=f"https://discord.com/channels/{guild.id}/{CHANNEL_CHECKIN_ID}"))
 
-    elif step == 2:
-        view.add_item(Step2AutoTriggerButton(user, guild))
+   elif step == 2:
+    daily_url = f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}"
+    view.add_item(discord.ui.Button(
+        label="🎨 그림보고 구경하러 가기",
+        style=discord.ButtonStyle.link,
+        url=daily_url
+    ))
+
+    # 25초 뒤 자동 트리거 실행
+    asyncio.create_task(trigger_step2_after_delay(user))
+
 
     elif step == 3:
         view.add_item(discord.ui.Button(label="📊 출근기록으로 이동",
@@ -116,41 +125,37 @@ async def send_ot_step(channel, user, step):
 
     await channel.send(embed=embed, view=view)
 
-# --- Step2: 자동 트리거 버튼 (클릭 시 이동 + 타이머 시작) ---
-class Step2AutoTriggerButton(discord.ui.Button):
-    def __init__(self, user, guild):
-        super().__init__(label="🎨 그림보고 열기", style=discord.ButtonStyle.link,
-                         url=f"https://discord.com/channels/{guild.id}/{CHANNEL_DAILY_ID}")
-        self.user = user
-        self.guild = guild
+# --- Step2 : 일일 그림보고 (25초 뒤 자동 트리거) ---
+async def trigger_step2_after_delay(user: discord.Member):
+    """Step2 유도 메시지 이후 25초 후 자동 트리거"""
+    await asyncio.sleep(25)  # 액션 유도 메시지 후 25초 대기
+    ch_id = next((cid for cid, uid in channel_owner.items() if uid == user.id), None)
+    if not ch_id:
+        return
+    ch = bot.get_channel(ch_id)
+    if not ch:
+        return
 
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        user = self.user
-        await asyncio.sleep(STEP2_DELAY)  # 20초 대기
+    # 10초 텀 후 축하 멘션
+    await asyncio.sleep(10)
+    await ch.send(f"{user.mention} ✅ 잘 다녀오셨나요?")
 
-        ch_id = next((cid for cid, uid in channel_owner.items() if uid == user.id), None)
-        if not ch_id: return
-        ch = bot.get_channel(ch_id)
-        if not ch: return
+    embed = discord.Embed(
+        title="🎉 그림보고 탐방 완료!",
+        description=(
+            "다른 사람들의 그림을 보 것만으로도 큰 공부예요 🎨\n"
+            "이제 당신도 직접 올려볼 차례예요!\n\n"
+            "🖼️ 낙서, 크로키, 모작, 연습 드로잉, 그림 연구 등 모두 좋아요!\n"
+            "완성작이 아니어도 충분히 의미 있는 기록이에요. ✨\n\n"
+            "이제 다음 단계로 넘어가볼까요?"
+        ),
+        color=0xFFD166
+    )
+    await ch.send(embed=embed)
+    await asyncio.sleep(STEP_DELAY)
+    await send_ot_step(ch, user, 3)
+    user_ot_progress[user.id] = 3
 
-        await asyncio.sleep(10)  # 멘션 전 텀
-        await ch.send(f"{user.mention} ✅ 잘 다녀오셨나요?")
-        embed = discord.Embed(
-            title="🎉 그림보고 탐방 완료!",
-            description=(
-                "다른 사람들의 그림을 구경하는 것만으로도 큰 공부예요 🎨\n\n"
-                "이제 당신도 직접 올려볼 차례예요!\n\n"
-                "🖼️ 낙서, 크로키, 모작, 연습 드로잉, 그림 연구 등 모두 좋아요!\n"
-                "완성작이 아니어도 충분히 의미 있는 기록이에요. ✨\n\n"
-                "이제 다음 단계로 넘어가볼까요?"
-            ),
-            color=0xFFD166
-        )
-        await ch.send(embed=embed)
-        await asyncio.sleep(STEP_DELAY)
-        await send_ot_step(ch, user, 3)
-        user_ot_progress[user.id] = 3
 
 # --- Step4: 포럼 생성 버튼 ---
 class Step4ForumButton(discord.ui.Button):
