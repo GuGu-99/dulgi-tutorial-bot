@@ -211,9 +211,9 @@ class Step4Button(discord.ui.Button):
                 pass
         asyncio.create_task(delete_feedback_message())
 
-        # ✅ 20초 뒤 개인 OT 채널에 멘션/안내
+        # ✅25초 뒤 개인 OT 채널에 멘션/안내
         async def followup_back_to_private():
-            await asyncio.sleep(20)
+            await asyncio.sleep(25)
             ch_id = next((cid for cid, uid in channel_owner.items() if uid == self.user.id), None)
             if not ch_id: return
             ch = bot.get_channel(ch_id)
@@ -404,4 +404,5 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     else:
         print("⚠️ DISCORD_BOT_TOKEN 미설정")
+
 
