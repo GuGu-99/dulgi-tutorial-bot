@@ -91,9 +91,10 @@ OT_STEPS = {
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
             "**이제 한 주를 정리해볼 시간이에요 📅**\n\n"
-            "‘#주간-그림보고’ 채널에 **본인 닉네임**으로 포럼을 만들어드릴게요!\n"
-            "시작버튼을 누르고 잠시 기다려주세요!"
+            "‘#주간-그림보고’ 채널에 **본인 닉네임**으로 포럼을 만들어보세요!\n"
+            "예: `[둘기] 10월 2주차 피드백 ✨`\n"
             "━━━━━━━━━━━━━━━━━━━\n"
+            "> 완벽하지 않아도 괜찮아요, 기록이 곧 성장이에요 🌱"
         )
     }
 }
@@ -149,7 +150,7 @@ class GreenJumpButton(discord.ui.Button):
 # --- Step4: 포럼 생성 버튼 ---
 class Step4Button(discord.ui.Button):
     def __init__(self, user: discord.Member):
-        super().__init__(label="📑 주간 포럼 체험시작!", style=discord.ButtonStyle.success, custom_id="weekly_forum")
+        super().__init__(label="📑 주간 포럼으로 이동", style=discord.ButtonStyle.success, custom_id="weekly_forum")
         self.user = user
         self.clicked = False  # 중복 생성 방지
 
@@ -211,9 +212,9 @@ class Step4Button(discord.ui.Button):
                 pass
         asyncio.create_task(delete_feedback_message())
 
-        # ✅25초 뒤 개인 OT 채널에 멘션/안내
+        # ✅ 20초 뒤 개인 OT 채널에 멘션/안내
         async def followup_back_to_private():
-            await asyncio.sleep(25)
+            await asyncio.sleep(20)
             ch_id = next((cid for cid, uid in channel_owner.items() if uid == self.user.id), None)
             if not ch_id: return
             ch = bot.get_channel(ch_id)
@@ -234,9 +235,8 @@ class Step4Button(discord.ui.Button):
                 color=0x43B581
             )
             await ch.send(embed=embed)
-        asyncio.create_task(followup_back_to_private())
 
-# ✅ 튜토리얼(신입 OT) 종료 메시지 추가
+        # ✅ 튜토리얼(신입 OT) 종료 메시지 추가
 await send_space(ch)
 embed_done = discord.Embed(
     title="🎉 신입 OT 완료!",
@@ -251,7 +251,7 @@ embed_done = discord.Embed(
 )
 await ch.send(embed=embed_done)
 
-
+        asyncio.create_task(followup_back_to_private())
 
 # --- 단계 안내 메시지 전송 ---
 async def send_ot_step(channel: discord.TextChannel, user: discord.Member, step: int):
@@ -263,15 +263,15 @@ async def send_ot_step(channel: discord.TextChannel, user: discord.Member, step:
 
     if step == 1:
         # 초록 버튼(클릭 시 채널 안내)
-        view.add_item(GreenJumpButton("🫡 출근체험 시작!", CHANNEL_CHECKIN_ID, user))
+        view.add_item(GreenJumpButton("🫡 출근기록으로 이동", CHANNEL_CHECKIN_ID, user))
 
     elif step == 2:
-        view.add_item(GreenJumpButton("🎨 그림보고 체험시작!", CHANNEL_DAILY_ID, user))
+        view.add_item(GreenJumpButton("🎨 그림보고 구경하러 가기", CHANNEL_DAILY_ID, user))
         # 안내 후 25초 자동 트리거
         asyncio.create_task(trigger_step2_after_delay(user))
 
     elif step == 3:
-        view.add_item(GreenJumpButton("📊 보고서 체험 시작!", CHANNEL_CHECKIN_ID, user))
+        view.add_item(GreenJumpButton("📊 출근기록으로 이동", CHANNEL_CHECKIN_ID, user))
 
     elif step == 4:
         view.add_item(Step4Button(user))
@@ -404,5 +404,3 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     else:
         print("⚠️ DISCORD_BOT_TOKEN 미설정")
-
-
