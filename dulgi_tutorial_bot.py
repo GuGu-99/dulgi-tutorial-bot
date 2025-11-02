@@ -114,10 +114,10 @@ async def trigger_step2_after_delay(user: discord.Member):
     await send_ot_step(ch, user, 3)
     user_ot_progress[user.id] = 3
 
-# === Step4 포럼 버튼 ===
+# === Step4 포럼 버튼 (수정 버전) ===
 class Step4Button(discord.ui.Button):
     def __init__(self, user):
-        super().__init__(label="📑 주간 포럼으로 이동", style=discord.ButtonStyle.success)
+        super().__init__(label="📑 주간 그림보고 만들기", style=discord.ButtonStyle.success)
         self.user = user
         self.clicked = False
 
@@ -126,87 +126,50 @@ class Step4Button(discord.ui.Button):
             await interaction.response.send_message("본인 진행용 버튼이에요 🙏", ephemeral=True)
             return
         if self.clicked:
-            await interaction.response.send_message("이미 포럼이 생성되었어요 ✅", ephemeral=True)
+            await interaction.response.send_message("이미 확인하셨어요 ✅", ephemeral=True)
             return
 
         self.clicked = True
         await interaction.response.defer()
         self.disabled = True
         await interaction.message.edit(view=self.view)
-        await asyncio.sleep(10)
 
-        forum = bot.get_channel(FORUM_CHANNEL_ID)
-        if not isinstance(forum, discord.ForumChannel):
-            await interaction.followup.send("⚠️ 포럼 채널을 찾을 수 없어요.", ephemeral=True)
+        ch_id = next((cid for cid, uid in channel_owner.items() if uid == self.user.id), None)
+        if not ch_id:
             return
+        ch = bot.get_channel(ch_id)
 
-        thread = await forum.create_thread(
-            name=f"[{self.user.display_name}] 주간 피드백",
-            content=f"{self.user.mention}님을 위한 주간 피드백 공간이에요 🎨"
+        # ① Step4 가이드 안내
+        embed = discord.Embed(
+            title="🗂️ 주간 그림보고 만들기",
+            description=(
+                "이제는 **직접 주간 포럼을 만들어볼 시간이에요!** 🎨\n\n"
+                "아래 예시를 참고하면서 천천히 따라가볼까요?\n"
+                "완성 후에는 매주 한 번씩 기록을 남겨보세요 🌱"
+            ),
+            color=0x43B581
         )
+        await ch.send(embed=embed)
 
-        feedback_text = (
-            "✅ **목표**\n"
-            "한주간 내가 그림 관련해서 한 것들을 정리하고 스스로 피드백을 진행한다\n\n"
-            "📔 **방법**\n"
-            "자신의 디스코드 닉네임으로 '새 포스트'를 만들고, 아래 양식으로 작성하세요.\n"
-            "(매일 하면 더 좋아요! 자유롭게 블로그처럼 이용해도 됩니다 🥰)\n\n"
-            "**⚠️ 주의사항**\n"
-            "자기비하가 아닌, 제3자의 시선으로 관찰하듯 피드백해주세요!\n\n"
-            "ㅡㅡㅡㅡ작성 양식ㅡㅡㅡㅡ\n\n"
-            "[한 주간 진행한 것들]\n\n"
-            "[잘한 점] (최소 3가지)\n1.\n2.\n3.\n\n"
-            "[개선해야 할 점] (최소 3가지)\n1.\n2.\n3.\n\n"
-            "[개선 방법]\n- \n- "
-        )
-        msg = await thread.send(f"{self.user.mention}\n{feedback_text}")
+        # ② 이미지 3장을 순차적으로 전송
+        image_files = ["4-1.jpg", "4-2.jpg", "4-3.jpg"]
+        for img in image_files:
+            await asyncio.sleep(3)  # 각 이미지 사이 3초 텀
+            try:
+                await ch.send(file=discord.File(img))
+            except Exception as e:
+                print(f"⚠️ 이미지 전송 오류: {img} - {e}")
 
-        async def delete_later():
-            await asyncio.sleep(604800)
-            try: await msg.delete()
-            except: pass
-        asyncio.create_task(delete_later())
+        # ③ 10초 대기 후 "이제 만들어볼까요?" + 이동 버튼
+        await asyncio.sleep(10)
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(
+            label="🗂️ 주간-그림보고로 이동",
+            style=discord.ButtonStyle.success,
+            url=f"https://discord.com/channels/{ch.guild.id}/1423360385225851011"
+        ))
+        await ch.send("이제 만들어볼까요? ✨", view=view)
 
-        # --- 20초 뒤 개인 OT 채널 안내 + 종료 멘트 ---
-        async def followup_back_to_private():
-            await asyncio.sleep(20)
-            ch_id = next((cid for cid, uid in channel_owner.items() if uid == self.user.id), None)
-            if not ch_id: return
-            ch = bot.get_channel(ch_id)
-            if not ch: return
-
-            await ch.send(f"{self.user.mention} 🪶 여러분만의 **주간 그림 보고서 방**이 생성되었어요!")
-            await send_space(ch)
-            embed = discord.Embed(
-                title="📔 주간 보고서 안내",
-                description=(
-                    "새로운 포럼이 열렸어요 🎨\n"
-                    "썸네일 이미지는 자유롭게 꾸며도 좋고,\n"
-                    "예시가 궁금하다면 아래 링크를 참고하세요.\n\n"
-                    "[예시 보기](https://discord.com/channels/1310854848442269767/1426954981638013049/1426954981638013049)\n\n"
-                    "매주 한 번씩은 꼭 작성해주세요!\n"
-                    "작성하는 그 순간, 이미 성장하고 있는 거예요 🌱"
-                ),
-                color=0x43B581
-            )
-            await ch.send(embed=embed)
-
-            # ✅ 튜토리얼(신입 OT) 종료 멘트 추가
-            await send_space(ch)
-            embed_done = discord.Embed(
-                title="🎉 신입 OT 완료!",
-                description=(
-                    "이제 당신은 모든 준비를 마쳤어요! 🎨\n\n"
-                    "이곳에서의 시간 동안 기본적인 루틴을 익히셨으니,\n"
-                    "앞으로는 직접 성장의 여정을 이어가보세요 🌱\n\n"
-                    f"궁금한 점이나 오류가 있다면 <#{CHANNEL_QNA_ID}> 채널로 문의해주세요 📨\n\n"
-                    "이 채널은 **24시간 후 자동 삭제**됩니다 🕓"
-                ),
-                color=0x43B581
-            )
-            await ch.send(embed=embed_done)
-
-        asyncio.create_task(followup_back_to_private())
 
 # === Step 전송 ===
 async def send_ot_step(channel, user, step):
@@ -321,3 +284,4 @@ async def on_ready():
 if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
     bot.run(TOKEN)
+
