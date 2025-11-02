@@ -152,7 +152,7 @@ class Step4Button(discord.ui.Button):
         await ch.send(embed=embed)
 
         # ② 이미지 3장을 순차적으로 전송
-        image_files = ["4-1.jpg", "4-2.jpg", "4-3.jpg"]
+        image_files = ["4-1.jpg", "4-2.jpg", "4-3.jpg", "4-4.jpg"]
         for img in image_files:
             await asyncio.sleep(3)  # 각 이미지 사이 3초 텀
             try:
@@ -284,4 +284,5 @@ async def on_ready():
 if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
     bot.run(TOKEN)
+
 
