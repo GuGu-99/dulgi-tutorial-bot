@@ -78,14 +78,12 @@ OT_STEPS = {
             f"이제 {channel_mention(CHANNEL_CHECKIN_ID)} 채널로 이동 후 명령어를 입력해보세요! 🌱\n"
             "━━━━━━━━━━━━━━━━━━━"
         )},
-    4: {"title": "🗂️ **Step 4 : 주간 그림보고 (포럼 작성)**",
+    4: {"title": "🗂️ **Step 4 : 주간 그림보고 만들기**",
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
-            "**이제 한 주를 정리해볼 시간이에요 📅**\n\n"
-            "‘#주간-그림보고’ 채널에 **본인 닉네임**으로 포럼을 만들어보세요!\n"
-            "예: `[둘기] 10월 2주차 피드백 ✨`\n"
+            "한 주에 한번 스스로 피드백 해보는 시간을 가져보아요!\n"
+            "아래 버튼을 눌러 가이드를 확인해보세요\n"
             "━━━━━━━━━━━━━━━━━━━\n"
-            "> 완벽하지 않아도 괜찮아요, 기록이 곧 성장이에요 🌱"
         )}
 }
 
@@ -110,7 +108,7 @@ async def trigger_step2_after_delay(user: discord.Member):
         ),
         color=0xFFD166
     )
-    await asyncio.sleep(5)
+    await asyncio.sleep(3)
     await ch.send(embed=embed)
     await ch.send(f"{user.mention}")
     embed_tip = discord.Embed(
@@ -131,7 +129,7 @@ async def trigger_step2_after_delay(user: discord.Member):
 # === Step4 포럼 버튼 (간략화 버전, 수정됨) ===
 class Step4Button(discord.ui.Button):
     def __init__(self, user):
-        super().__init__(label="📑 주간 그림보고 알아보기", style=discord.ButtonStyle.success)
+        super().__init__(label="📑 주간 그림보고 가이드", style=discord.ButtonStyle.success)
         self.user = user
         self.clicked = False
 
@@ -404,6 +402,7 @@ async def on_ready():
 if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
     bot.run(TOKEN)
+
 
 
 
