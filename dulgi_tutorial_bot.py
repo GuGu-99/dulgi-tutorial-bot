@@ -110,7 +110,6 @@ async def trigger_step2_after_delay(user: discord.Member):
     )
     await asyncio.sleep(3)
     await ch.send(embed=embed)
-    await ch.send(f"{user.mention}")
     embed_tip = discord.Embed(
         title="📌주의사항📌",
         description=(
@@ -195,7 +194,7 @@ class Step4Button(discord.ui.Button):
             style=discord.ButtonStyle.success,
             url=f"https://discord.com/channels/{ch.guild.id}/1423360385225851011"
         ))
-        await ch.send(f"{user.mention} 이제 주간보고서를 만들러 가볼까요? ✨", view=view_report)
+        await ch.send(f"{user.mention} 이제 주간보고서를 만들어볼까요? ✨", view=view_report)
 
         # ③ 30초 후: 확인 및 가이드 재보기 버튼
         await asyncio.sleep(40)
@@ -298,7 +297,7 @@ async def on_message(msg):
             color=0xFFD166)
         await ch.send(embed=embed)
         await send_space(ch, 2)
-        await asyncio.sleep(STEP_DELAY)
+        await asyncio.sleep(5)
         await send_ot_step(ch, user, 2)
         user_ot_progress[user.id] = 2
 
@@ -494,6 +493,7 @@ async def on_thread_create(thread: discord.Thread):
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
