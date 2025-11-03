@@ -404,6 +404,97 @@ if __name__ == "__main__":
     bot.run(TOKEN)
 
 
+# === 포럼 게시글(스레드) 생성 감지 ===
+@bot.event
+async def on_thread_create(thread: discord.Thread):
+    try:
+        # 1️⃣ 대상 포럼만 감지
+        if thread.parent_id != FORUM_CHANNEL_ID:
+            return
+
+        # 2️⃣ 생성자 찾기
+        creator = None
+
+        # 빠른 경로 (디스코드에서 owner가 바로 제공될 경우)
+        if getattr(thread, "owner", None):
+            creator = thread.owner
+
+        # owner가 없으면 owner_id 기반으로 탐색
+        if not creator and getattr(thread, "owner_id", None):
+            creator = thread.guild.get_member(thread.owner_id)
+            if not creator:
+                try:
+                    creator = await thread.guild.fetch_member(thread.owner_id)
+                except Exception:
+                    pass
+
+        # 그래도 없으면 첫 메시지 작성자로 대체
+        if not creator:
+            try:
+                await asyncio.sleep(1.0)
+                starter_msg = await thread.fetch_message(thread.id)
+                creator = starter_msg.author
+            except Exception:
+                pass
+
+        if not creator:
+            return  # 생성자 못 찾으면 종료
+
+        # 3️⃣ Step4 진행자만 트리거
+        if user_ot_progress.get(creator.id) != 4:
+            return
+
+        # 4️⃣ 개인 OT 채널 찾기
+        ch_id = next((cid for cid, uid in channel_owner.items() if uid == creator.id), None)
+        if not ch_id:
+            return
+        ch = bot.get_channel(ch_id)
+        if not ch:
+            return
+
+        # 5️⃣ 5초 후 메시지 전송
+        await asyncio.sleep(5)
+
+        embed = discord.Embed(
+            title="🎉 주간 그림보고 생성 완료!",
+            description=(
+                f"{creator.mention}, 정말 잘 하셨어요! 🥳\n\n"
+                "이제 당신의 주간 피드백 공간이 만들어졌어요.\n"
+                "매주 한 번씩 성장의 발자취를 남겨보세요 🌱"
+            ),
+            color=0x43B581
+        )
+        await ch.send(embed=embed)
+
+        # 이후 추가 멘트 (예: OT 종료)
+        await asyncio.sleep(5)
+        embed_done = discord.Embed(
+            title="🏁 신입 OT 완료!",
+            description=(
+                "이제 당신은 모든 준비를 마쳤어요! 🎨\n\n"
+                f"궁금한 점은 언제든 {channel_mention(CHANNEL_QNA_ID)} 채널로 문의해주세요 📩\n\n"
+                "이 채널은 **24시간 후 자동 삭제**됩니다 🕓"
+            ),
+            color=0x43B581
+        )
+        await ch.send(embed=embed_done)
+
+        # 역할 교체 (완료 역할 부여 + 시작 역할 제거)
+        role_start = ch.guild.get_role(START_ROLE_ID)
+        role_complete = ch.guild.get_role(COMPLETE_ROLE_ID)
+        try:
+            if role_complete:
+                await creator.add_roles(role_complete, reason="튜토리얼 완료 (포럼 생성 감지)")
+                print(f"🎓 {creator.display_name} → 튜토리얼 완료 역할 부여")
+            if role_start:
+                await creator.remove_roles(role_start, reason="튜토리얼 시작 역할 제거")
+                print(f"🧹 {creator.display_name} → 튜토리얼 시작 역할 제거")
+        except Exception as e:
+            print(f"⚠️ 역할 교체 실패: {e}")
+
+    except Exception as e:
+        print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
