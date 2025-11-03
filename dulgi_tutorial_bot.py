@@ -31,7 +31,7 @@ CHANNEL_DAILY_ID     = 1423170386811682908
 CHANNEL_QNA_ID       = 1424270317777326250
 STEP_DELAY = 10
 STEP2_DELAY = 25
-DELETE_DELAY = 86400  # 24시간 후 삭제
+DELETE_DELAY = 86400 
 
 user_ot_progress = {}
 sent_users = set()
@@ -111,6 +111,22 @@ async def trigger_step2_after_delay(user: discord.Member):
         color=0xFFD166
     )
     await ch.send(embed=embed)
+    await ch.send(f"{user.mention}")
+    embed_tip = discord.Embed(
+        title="📌주의사항📌",
+        description=(
+            "이미지를 꼭 같이 첨부하셔야 성과로 인정됩니다!"
+        ),
+        color=0x43B581
+    )
+    embed_tip.add_field(
+        name="💡 참고",
+        value="GIF도 가능합니다! (용량 8MB 이하)\n꾸준히 기록하는 습관이 중요해요 🌱",
+        inline=False
+    )
+    await ch.send(embed=embed_tip)
+
+    
     await send_space(ch, 2)
     await asyncio.sleep(STEP_DELAY)
     await send_ot_step(ch, user, 3)
@@ -205,35 +221,46 @@ class Step4Button(discord.ui.Button):
                 # ④ 5초 후: 마무리 및 OT 종료 버튼
         await asyncio.sleep(5)
 
-        # ✅ 튜토리얼 완료 시 역할 교체 (완료 부여 + 시작 제거)
+     # ✅ 튜토리얼 완료 시 역할 교체 (완료 부여 + 시작 제거)
+        member = ch.guild.get_member(user.id)
+        if not member:
+            member = await ch.guild.fetch_member(user.id)
+
         role_start = ch.guild.get_role(START_ROLE_ID)
         role_complete = ch.guild.get_role(COMPLETE_ROLE_ID)
         try:
-            if role_complete:
-                await user.add_roles(role_complete, reason="튜토리얼 완료")
-                print(f"🎓 {user.display_name} → 튜토리얼 완료 역할 부여")
-            if role_start:
-                await user.remove_roles(role_start, reason="튜토리얼 시작 역할 제거")
-                print(f"🧹 {user.display_name} → 튜토리얼 시작 역할 제거")
+            if role_complete and role_complete not in member.roles:
+                await member.add_roles(role_complete, reason="튜토리얼 완료")
+                print(f"🎓 {member.display_name} → 튜토리얼 완료 역할 부여")
+
+            if role_start and role_start in member.roles:
+                await member.remove_roles(role_start, reason="튜토리얼 완료 후 시작 역할 제거")
+                print(f"🧹 {member.display_name} → 튜토리얼 시작 역할 제거")
         except Exception as e:
             print(f"⚠️ 역할 교체 실패: {e}")
 
 
-        # ④ 5초 후: 마무리 및 OT 종료 버튼
-        await asyncio.sleep(5)
+        # 🎯 마지막 안내 임베드 + 버튼
         view_end = discord.ui.View()
         view_end.add_item(discord.ui.Button(
-            label="🎯 신입OT 끝!",
-            style=discord.ButtonStyle.blurple,  # 파란색
+            label="🎯 신입 OT 끝!",
+            style=discord.ButtonStyle.blurple,
             url=f"https://discord.com/channels/{ch.guild.id}/1423174036917325916"
         ))
-        await ch.send(
-            f"{user.mention} 마지막으로 안내드릴게요 💫\n"
-            "매달 **우수사원**을 선정하고 있어요! ✨\n"
-            "꾸준히 참여하신다면 분명 이름이 올라갈 거예요 🏆\n\n"
-            "이제 모든 OT가 완료되었습니다. 수고하셨습니다 🎉",
-            view=view_end
+
+        embed_end = discord.Embed(
+            title="🏁 신입 OT 완료!",
+            description=(
+                "매달 **우수사원**을 선정하고 있어요! ✨\n"
+                "꾸준히 참여하신다면 분명 이름이 올라갈 거예요 🏆\n\n"
+                f"궁금한 점은 언제든 <#{CHANNEL_QNA_ID}> 채널로 문의해주세요 📩\n"
+                "이제 모든 OT가 완료되었습니다. 수고하셨습니다 🎉"
+            ),
+            color=0x5865F2
         )
+        embed_end.set_footer(text="그림친구 1팀 • 튜토리얼 완료")
+
+        await ch.send(content=f"{user.mention}", embed=embed_end, view=view_end)
 
 
 # === Step 전송 ===
@@ -272,8 +299,8 @@ async def on_message(msg):
         await ch.send(f"{user.mention}")
         embed = discord.Embed(
             title="🎉 출근 완료!",
-            description=(f"앞으로도 {channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 매일 출근해보세요\n"
-                         "매일의 출근이 당신의 루틴이 될 거예요.\n\n"),
+            description=(f"앞으로도 {channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 매일 출근해보세요\n\n"
+                         "매일 출근하면서 같이 열심히 성장해봐요!\n"),
             color=0xFFD166)
         await ch.send(embed=embed)
         await send_space(ch, 2)
@@ -311,7 +338,7 @@ async def create_private_ot_channel(guild, member):
     channel_owner[ch.id] = member.id
 
     embed = discord.Embed(title="🎓 그림친구 1팀 신입 OT 안내",
-                          description="안녕하세요! 인사팀입니다 💼\n\n지금부터 천천히 따라하면서 체험해보아요**",
+                          description="안녕하세요! 인사팀입니다 💼\n\n지금부터 차근차근 어떻게 활동하는지 체험해보는 시간을 가져봐요!😍",
                           color=0x00B2FF)
     await ch.send(f"{member.mention} 👋 반가워요!\n이곳은 커뮤니티 튜토리얼 공간입니다!")
     await send_space(ch)
@@ -382,6 +409,7 @@ async def on_ready():
 if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
     bot.run(TOKEN)
+
 
 
 
