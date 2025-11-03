@@ -110,6 +110,7 @@ async def trigger_step2_after_delay(user: discord.Member):
         ),
         color=0xFFD166
     )
+    await asyncio.sleep(5)
     await ch.send(embed=embed)
     await ch.send(f"{user.mention}")
     embed_tip = discord.Embed(
@@ -117,12 +118,7 @@ async def trigger_step2_after_delay(user: discord.Member):
         description=(
             "이미지를 꼭 같이 첨부하셔야 성과로 인정됩니다!"
         ),
-        color=0x43B581
-    )
-    embed_tip.add_field(
-        name="💡 참고",
-        value="GIF도 가능합니다! (용량 8MB 이하)\n꾸준히 기록하는 습관이 중요해요 🌱",
-        inline=False
+        color=0xFFD166
     )
     await ch.send(embed=embed_tip)
 
@@ -160,7 +156,7 @@ class Step4Button(discord.ui.Button):
 
         # ① Step4 안내 메시지
         embed = discord.Embed(
-            title="🗂️ STEP 4 : 주간 그림보고 알아가기",
+            title="🗂️ STEP 4 : 주간 그림보고 가이드",
             description=(
                 f"{user.mention}\n"
                 "━━━━━━━━━━━━━━━━━━━\n"
@@ -171,8 +167,8 @@ class Step4Button(discord.ui.Button):
                 "```\n"
                 "━━━━━━━━━━━━━━━━━━━\n"
                 "```\n"
-                "# 📔 방법\n"
-                "1. {channel_mention(1423360385225851011)}에서 '새 포스트' 생성 클릭!\n\n"
+                f"# 📔 방법\n"
+                f"1. {channel_mention(1423360385225851011)}에서 '새 포스트' 생성 클릭!\n\n"
                 "2. 자신의 닉네임을 제목으로, 원하는 프로필 이미지를 첨부해서 포스트를 만들어주세요\n\n"
                 "3. 아래 양식을 바탕으로 한 주에 최소 한 번씩 작업일지 작성\n\n"
                 "*프로필 이미지는 차후 변경이 어려우니 자신을 대표할만한 그림을 올려보아요! 🥰\n\n"
@@ -315,10 +311,9 @@ async def on_message(msg):
         await ch.send(f"{user.mention}")
         embed = discord.Embed(
             title="📊 보고서 확인 완료!",
-            description=(f"앞으로도 {channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 하루의 성과를 꾸준히 체크해봐요\n"
-                         "출근과 일일그림보고만 완료해도 하루 업무완료!\n\n"
-                         "초록색칸이 채워지는 만큼 여러분의 실력도 성장할거에요!"),
-            color=0x43B581)
+            description=(f"{channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 하루의 성과를 확인할 수 있어요!\n\n"
+                         "🌱초록색칸이 채워지는 만큼 여러분의 실력도 성장할거에요!🌱"),
+            color=0xFFD166)
         await ch.send(embed=embed)
         await send_space(ch, 2)
         await asyncio.sleep(STEP_DELAY)
@@ -409,6 +404,7 @@ async def on_ready():
 if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
     bot.run(TOKEN)
+
 
 
 
