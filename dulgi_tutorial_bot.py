@@ -334,92 +334,14 @@ if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
     bot.run(TOKEN)
 
-# === 포럼 게시글(스레드) 생성 감지 ===
-@bot.event
-async def on_thread_create(thread: discord.Thread):
-    try:
-        # 1) 대상 포럼만 감지
-        if thread.parent_id != FORUM_CHANNEL_ID:
-            return
 
-        # 2) 생성자 찾기 (여러 경로로 보강)
-        creator = None
-
-        # 2-1) 바로 owner가 들어오는 경우 (가장 빠름)
-        if getattr(thread, "owner", None):
-            creator = thread.owner
-
-        # 2-2) owner가 비어있으면 owner_id로 길드에서 멤버 조회
-        if not creator and getattr(thread, "owner_id", None):
-            creator = thread.guild.get_member(thread.owner_id)
-            if not creator:
-                try:
-                    creator = await thread.guild.fetch_member(thread.owner_id)
-                except Exception:
-                    pass
-
-        # 2-3) 그래도 못 찾으면 "시작 메시지"의 작성자를 가져오기
-        #      (포럼의 첫 메시지 id == thread.id)
-        if not creator:
-            try:
-                # 일부 경우 메시지에 접근하려면 join이 필요
-                try:
-                    await thread.join()
-                except Exception:
-                    pass
-                # 약간의 지연 후 시작 메시지 조회
-                await asyncio.sleep(1.0)
-                starter_msg = await thread.fetch_message(thread.id)
-                creator = starter_msg.author
-            except Exception as e:
-                print(f"⚠️ starter message fetch 실패: {e}")
-
-        if not creator:
-            return  # 생성자를 못 찾으면 종료
-
-        # 3) 이 유저가 Step4 진행 중인 사람인지 확인
-        if user_ot_progress.get(creator.id) != 4:
-            return
-
-        # 4) 개인 OT 채널 찾아서 메시지 전송
-        ch_id = next((cid for cid, uid in channel_owner.items() if uid == creator.id), None)
-        if not ch_id:
-            return
-        ch = bot.get_channel(ch_id)
-        if not ch:
-            return
-
-        # 약간의 텀 후 안내
-        await asyncio.sleep(5)
-        embed_ok = discord.Embed(
-            title="🎉 주간 그림보고 생성 완료!",
-            description=(
-                f"{creator.mention}, 정말 잘 하셨어요! 🥳\n\n"
-                "이제 당신의 주간 피드백 공간이 만들어졌어요.\n"
-                "매주 한 번씩 성장의 발자취를 남겨보세요 🌱"
-            ),
-            color=0x43B581
-        )
-        await ch.send(embed=embed_ok)
-
-        # 튜토리얼 완료 멘트
-        await asyncio.sleep(5)
-        embed_done = discord.Embed(
-            title="🏁 신입 OT 완료!",
-            description=(
-                "이제 당신은 모든 준비를 마쳤어요! 🎨\n\n"
-                f"궁금한 점은 언제든 <#{CHANNEL_QNA_ID}> 채널로 문의해주세요 📩\n\n"
-                "이 채널은 **24시간 후 자동 삭제**됩니다 🕓"
-            ),
-            color=0x43B581
-        )
-        await ch.send(embed=embed_done)
 
         # (원한다면) 상태 업데이트
         # user_ot_progress[creator.id] = "done"
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
