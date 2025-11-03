@@ -22,6 +22,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
+
 # === 설정값 ===
 FORUM_CHANNEL_ID     = 1423360385225851011
 START_ROLE_ID        = 1427654027600203886   # 🟢 튜토리얼 시작 역할 (새로 추가)
@@ -34,6 +35,7 @@ STEP2_DELAY = 25
 DELETE_DELAY = 86400 
 
 user_ot_progress = {}
+recent_threads = set()
 sent_users = set()
 channel_owner = {}
 
@@ -370,24 +372,6 @@ async def on_member_update(before, after):
         print(f"✅ OT 채널 생성 → {after.display_name} (시작 역할 감지)")
 
 
-# === 서버 재입장 시 OT 자동 처리 ===
-@bot.event
-async def on_member_join(member):
-    # 서버가 멤버 정보를 다 로드할 시간 약간 대기
-    await asyncio.sleep(3)
-
-    # 🏁 완료 역할이 있으면 OT 스킵
-    if any(r.id == COMPLETE_ROLE_ID for r in member.roles):
-        print(f"🔁 {member.display_name} 재입장 (튜토리얼 완료자) → OT 생략")
-        return
-
-    # 🟢 시작 역할이 이미 붙어 있으면 OT 생성 (재입장 복구)
-    if any(r.id == START_ROLE_ID for r in member.roles):
-        if member.id in sent_users:
-            return
-        sent_users.add(member.id)
-        await create_private_ot_channel(member.guild, member)
-        print(f"🔁 재입장 감지 → OT 채널 재생성: {member.display_name}")
 
 
 
@@ -407,6 +391,11 @@ if __name__ == "__main__":
 @bot.event
 async def on_thread_create(thread: discord.Thread):
     try:
+        # 중복 생성 방지
+        if thread.id in recent_threads:
+        return
+        recent_threads.add(thread.id)
+
         # 1️⃣ 대상 포럼만 감지
         if thread.parent_id != FORUM_CHANNEL_ID:
             return
