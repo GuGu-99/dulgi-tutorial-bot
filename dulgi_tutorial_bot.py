@@ -117,10 +117,10 @@ async def trigger_step2_after_delay(user: discord.Member):
     await send_ot_step(ch, user, 3)
     user_ot_progress[user.id] = 3
 
-# === Step4 포럼 버튼 (수정 버전) ===
+# === Step4 포럼 버튼 (간략화 버전) ===
 class Step4Button(discord.ui.Button):
     def __init__(self, user):
-        super().__init__(label="📑 주간 그림보고 만들기", style=discord.ButtonStyle.success)
+        super().__init__(label="📑 주간 그림보고 알아보기", style=discord.ButtonStyle.success)
         self.user = user
         self.clicked = False
 
@@ -141,37 +141,76 @@ class Step4Button(discord.ui.Button):
         if not ch_id:
             return
         ch = bot.get_channel(ch_id)
+        user = self.user
 
-        # ① Step4 가이드 안내
+        # ① Step4 안내 메시지
         embed = discord.Embed(
-            title="🗂️ 주간 그림보고 만들기",
+            title="🗂️ STEP 4 : 주간 그림보고 알아가기",
             description=(
-                "이제는 **직접 주간 포럼을 만들어볼 시간이에요!** 🎨\n\n"
-                "아래 예시를 참고하면서 천천히 따라가볼까요?\n"
-                "완성 후에는 매주 한 번씩 기록을 남겨보세요 🌱"
+                f"{user.mention}\n"
+                "이제 한 주를 정리해볼 시간이에요 ✨\n\n"
+                "━━━━━━━━━━━━━━━━━━━\n"
+                "✅ **목표**\n"
+                "한 주간 내가 그림 관련해서 한 것들을 정리하고\n"
+                "스스로 피드백을 진행한다\n"
+                "━━━━━━━━━━━━━━━━━━━\n\n"
+                "📔 **방법**\n"
+                "자신의 디스코드 닉네임을 제목으로 **'새 포스트' 생성**\n"
+                "아래 양식을 바탕으로 **한 주에 최소 한 번씩 작업일지 작성**\n"
+                "(매일 하면 더 좋습니다! 자유롭게 블로그처럼 이용해도 좋아요 🥰)\n"
+                "━━━━━━━━━━━━━━━━━━━\n\n"
+                "**작성 양식 예시** ✏️\n"
+                "[한 주간 진행한 것들]\n\n"
+                "[잘한 점] (최소 3가지 이상)\n"
+                "1.\n2.\n3.\n\n"
+                "[개선해야 할 점] (최소 3가지 이상)\n"
+                "1.\n2.\n3.\n\n"
+                "[개선 방법]\n- \n- "
             ),
             color=0x43B581
         )
         await ch.send(embed=embed)
 
-        # ② 이미지 3장을 순차적으로 전송
-        image_files = ["4-1.jpg", "4-2.jpg", "4-3.jpg", "4-4.jpg"]
-        for img in image_files:
-            await asyncio.sleep(3)  # 각 이미지 사이 3초 텀
-            try:
-                await ch.send(file=discord.File(img))
-            except Exception as e:
-                print(f"⚠️ 이미지 전송 오류: {img} - {e}")
-
-        # ③ 10초 대기 후 "이제 만들어볼까요?" + 이동 버튼
-        await asyncio.sleep(10)
-        view = discord.ui.View()
-        view.add_item(discord.ui.Button(
-            label="🗂️ 주간-그림보고로 이동",
+        # ② 20초 후: 주간 보고서 이동 버튼
+        await asyncio.sleep(20)
+        view_report = discord.ui.View()
+        view_report.add_item(discord.ui.Button(
+            label="🗂️ 나만의 주간그림보고서 만들어보기",
             style=discord.ButtonStyle.success,
             url=f"https://discord.com/channels/{ch.guild.id}/1423360385225851011"
         ))
-        await ch.send("이제 만들어볼까요? ✨", view=view)
+        await ch.send(f"{user.mention} 이제 주간보고서를 만들러 가볼까요? ✨", view=view_report)
+
+        # ③ 30초 후: 확인 및 가이드 재보기 버튼
+        await asyncio.sleep(30)
+        view_guide = discord.ui.View()
+        view_guide.add_item(discord.ui.Button(
+            label="📘 주간보고 가이드 보러가기",
+            style=discord.ButtonStyle.primary,  # 파랑 or 눈에 띄는 색
+            url=f"https://discord.com/channels/{ch.guild.id}/1426954981638013049"
+        ))
+        await ch.send(
+            f"{user.mention} 잘 만들어 봤나요? 🎨\n"
+            "혹시 아직이라면 꼭 만들어서 한 주에 한 번씩은 작성해보세요!\n"
+            "가이드를 다시 보고 싶다면 아래 버튼을 눌러주세요 👇",
+            view=view_guide
+        )
+
+        # ④ 5초 후: 마무리 및 OT 종료 버튼
+        await asyncio.sleep(5)
+        view_end = discord.ui.View()
+        view_end.add_item(discord.ui.Button(
+            label="🎯 신입OT 끝!",
+            style=discord.ButtonStyle.blurple,  # 파란색
+            url=f"https://discord.com/channels/{ch.guild.id}/1423174036917325916"
+        ))
+        await ch.send(
+            f"{user.mention} 마지막으로 안내드릴게요 💫\n"
+            "매달 **우수사원**을 선정하고 있어요! ✨\n"
+            "꾸준히 참여하신다면 분명 이름이 올라갈 거예요 🏆\n\n"
+            "이제 모든 OT가 완료되었습니다. 수고하셨습니다 🎉",
+            view=view_end
+        )
 
 
 # === Step 전송 ===
@@ -374,6 +413,7 @@ async def on_thread_create(thread: discord.Thread):
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
