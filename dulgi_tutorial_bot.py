@@ -163,22 +163,22 @@ class Step4Button(discord.ui.Button):
             title="🗂️ STEP 4 : 주간 그림보고 알아가기",
             description=(
                 f"{user.mention}\n"
-                "> ✨ 이제 한 주를 정리해볼 시간이에요!\n\n"
                 "━━━━━━━━━━━━━━━━━━━\n"
-                "```md\n"
+                "```\n"
                 "# ✅ 목표\n"
                 "한 주간 내가 그림 관련해서 한 것들을 정리하고\n"
                 "스스로 피드백을 진행한다\n"
                 "```\n"
                 "━━━━━━━━━━━━━━━━━━━\n"
-                "```md\n"
+                "```\n"
                 "# 📔 방법\n"
-                "자신의 디스코드 닉네임을 제목으로 '새 포스트' 생성\n"
-                "아래 양식을 바탕으로 한 주에 최소 한 번씩 작업일지 작성\n"
-                "(매일 하면 더 좋습니다! 자유롭게 블로그처럼 이용해도 좋아요 🥰)\n"
+                "1. {channel_mention(1423360385225851011)}에서 '새 포스트' 생성 클릭!\n\n"
+                "2. 자신의 닉네임을 제목으로, 원하는 프로필 이미지를 첨부해서 포스트를 만들어주세요\n\n"
+                "3. 아래 양식을 바탕으로 한 주에 최소 한 번씩 작업일지 작성\n\n"
+                "*프로필 이미지는 차후 변경이 어려우니 자신을 대표할만한 그림을 올려보아요! 🥰\n\n"
                 "```\n"
                 "━━━━━━━━━━━━━━━━━━━\n"
-                "```md\n"
+                "```\n"
                 "# ✏️ 작성 양식 예시\n"
                 "[한 주간 진행한 것들]\n\n"
                 "[잘한 점] (최소 3가지 이상)\n"
@@ -204,7 +204,7 @@ class Step4Button(discord.ui.Button):
         await ch.send(f"{user.mention} 이제 주간보고서를 만들러 가볼까요? ✨", view=view_report)
 
         # ③ 30초 후: 확인 및 가이드 재보기 버튼
-        await asyncio.sleep(30)
+        await asyncio.sleep(40)
         view_guide = discord.ui.View()
         view_guide.add_item(discord.ui.Button(
             label="📘 주간보고 가이드 보러가기",
@@ -409,6 +409,7 @@ async def on_ready():
 if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
     bot.run(TOKEN)
+
 
 
 
