@@ -393,7 +393,7 @@ async def on_thread_create(thread: discord.Thread):
     try:
         # 중복 생성 방지
         if thread.id in recent_threads:
-        return
+            return
         recent_threads.add(thread.id)
 
         # 1️⃣ 대상 포럼만 감지
@@ -482,6 +482,7 @@ async def on_thread_create(thread: discord.Thread):
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
