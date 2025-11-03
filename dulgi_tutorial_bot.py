@@ -24,7 +24,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # === 설정값 ===
 FORUM_CHANNEL_ID     = 1423360385225851011
-TARGET_ROLE_ID       = 1426578319410728980
+START_ROLE_ID        = 1427654027600203886   # 🟢 튜토리얼 시작 역할 (새로 추가)
+COMPLETE_ROLE_ID     = 1426578319410728980   # 🏁 튜토리얼 완료 역할 (새로 추가)
 CHANNEL_CHECKIN_ID   = 1423359791287242782
 CHANNEL_DAILY_ID     = 1423170386811682908
 CHANNEL_QNA_ID       = 1424270317777326250
@@ -201,6 +202,23 @@ class Step4Button(discord.ui.Button):
             view=view_guide
         )
 
+                # ④ 5초 후: 마무리 및 OT 종료 버튼
+        await asyncio.sleep(5)
+
+        # ✅ 튜토리얼 완료 시 역할 교체 (완료 부여 + 시작 제거)
+        role_start = ch.guild.get_role(START_ROLE_ID)
+        role_complete = ch.guild.get_role(COMPLETE_ROLE_ID)
+        try:
+            if role_complete:
+                await user.add_roles(role_complete, reason="튜토리얼 완료")
+                print(f"🎓 {user.display_name} → 튜토리얼 완료 역할 부여")
+            if role_start:
+                await user.remove_roles(role_start, reason="튜토리얼 시작 역할 제거")
+                print(f"🧹 {user.display_name} → 튜토리얼 시작 역할 제거")
+        except Exception as e:
+            print(f"⚠️ 역할 교체 실패: {e}")
+
+
         # ④ 5초 후: 마무리 및 OT 종료 버튼
         await asyncio.sleep(5)
         view_end = discord.ui.View()
@@ -313,15 +331,46 @@ class StartView(discord.ui.View):
 
         await send_ot_step(itx.channel, user, 1)
 
-# === 역할 부여 감지 ===
+
+# === 역할 부여 감지 (튜토리얼 시작용) ===
 @bot.event
 async def on_member_update(before, after):
+    # 이미 튜토리얼 완료 역할이 있다면 아무 것도 안 함
+    if any(r.id == COMPLETE_ROLE_ID for r in after.roles):
+        return
+
+    # 새로 붙은 역할만 계산
     new_roles = [r for r in after.roles if r not in before.roles]
-    if any(r.id == TARGET_ROLE_ID for r in new_roles):
-        if after.id in sent_users: return
+
+    # 🟢 시작 역할이 '새로' 붙었을 때만 OT 생성
+    if any(r.id == START_ROLE_ID for r in new_roles):
+        if after.id in sent_users:
+            return
         sent_users.add(after.id)
         await create_private_ot_channel(after.guild, after)
-        print(f"✅ OT 채널 생성 → {after.display_name}")
+        print(f"✅ OT 채널 생성 → {after.display_name} (시작 역할 감지)")
+
+
+# === 서버 재입장 시 OT 자동 처리 ===
+@bot.event
+async def on_member_join(member):
+    # 서버가 멤버 정보를 다 로드할 시간 약간 대기
+    await asyncio.sleep(3)
+
+    # 🏁 완료 역할이 있으면 OT 스킵
+    if any(r.id == COMPLETE_ROLE_ID for r in member.roles):
+        print(f"🔁 {member.display_name} 재입장 (튜토리얼 완료자) → OT 생략")
+        return
+
+    # 🟢 시작 역할이 이미 붙어 있으면 OT 생성 (재입장 복구)
+    if any(r.id == START_ROLE_ID for r in member.roles):
+        if member.id in sent_users:
+            return
+        sent_users.add(member.id)
+        await create_private_ot_channel(member.guild, member)
+        print(f"🔁 재입장 감지 → OT 채널 재생성: {member.display_name}")
+
+
 
 # === 실행 ===
 @bot.event
@@ -336,11 +385,6 @@ if __name__ == "__main__":
 
 
 
-        # (원한다면) 상태 업데이트
-        # user_ot_progress[creator.id] = "done"
-
-    except Exception as e:
-        print(f"⚠️ on_thread_create 처리 중 오류: {e}")
 
 
 
