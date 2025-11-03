@@ -56,26 +56,25 @@ OT_STEPS = {
     1: {"title": "🏢 **Step 1 : 출근하기**",
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
-            "**!출근 명령어를 아래 채널에서 입력해보세요!**\n\n"
+            "**아래 메시지를 출근 기록채널에서 입력해보세요!**\n\n"
             "✳️ **명령어 입력 방법**\n"
             "느낌표 + `출근`\n예: `!출근`\n"
-            "━━━━━━━━━━━━━━━━━━━\n\n"
-            "> 출근은 하루의 시작이자, 꿈을 향한 첫 걸음이에요 🌅"
+            "━━━━━━━━━━━━━━━━━━━"
         )},
     2: {"title": "🎨 **Step 2 : 일일 그림보고**",
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
-            "**오늘 하루 그림 공부를 어떤 형태로든 올려보세요! ✏️**\n\n"
-            "지금은 부담 갖지 말고, 우선 선배들이 어떻게 올리고 있는지 구경하러 가볼까요? 👀\n"
+            "**오늘 하루 그림 공부&작업한 것을 올려보아요✏️**\n\n"
+            "우선 선배들이 어떻게 하는지 구경하러 가볼까요? 👀\n"
             "━━━━━━━━━━━━━━━━━━━"
         )},
-    3: {"title": "📊 **Step 3 : 보고서 확인하기**",
+    3: {"title": "📊 **Step 3 : 하루 성과 확인하기**",
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
-            "**오늘 하루의 성과를 확인해볼까요?**\n\n"
+            "**출근, 일일 그림 보고를 마친 후 하루의 성과를 확인해보세요**\n\n"
             "✳️ **명령어 입력 방법**\n"
             "느낌표 + `보고서`\n예: `!보고서`\n\n"
-            f"{channel_mention(CHANNEL_CHECKIN_ID)} 채널로 이동 후 명령어를 입력해보세요! 🌱\n"
+            f"이제 {channel_mention(CHANNEL_CHECKIN_ID)} 채널로 이동 후 명령어를 입력해보세요! 🌱\n"
             "━━━━━━━━━━━━━━━━━━━"
         )},
     4: {"title": "🗂️ **Step 4 : 주간 그림보고 (포럼 작성)**",
@@ -98,21 +97,20 @@ async def trigger_step2_after_delay(user: discord.Member):
     if not ch: return
 
     await asyncio.sleep(10)
-    await ch.send(f"{user.mention} ✅ 잘 다녀오셨나요?")
-    await send_space(ch)
+    await ch.send(f"{user.mention}")
 
     embed = discord.Embed(
-        title="🎉 그림보고 탐방 완료!",
+        title="🎉 일일 그림보고 탐방완료!",
         description=(
-            "다른 사람들의 그림을 구경하는 것만으로도 큰 공부예요 🎨\n"
-            "이제 당신도 직접 올려볼 차례예요!\n\n"
-            "🖼️ 낙서, 크로키, 모작, 연습 드로잉, 그림 연구 등 모두 좋아요!\n"
-            "완성작이 아니어도 충분히 의미 있는 기록이에요. ✨\n\n"
-            "이제 다음 단계로 넘어가볼까요?"
+            "앞으로 자신의 그림 성장과정을 매일 공유해보세요🎨\n"
+            "🖼️ 낙서, 크로키, 모작, 그림 연구 등 모두 좋아요!\n"
+            "\n"
+            "✨**이미지와 함께 올려주셔야 하루 성과가 인정됩니다**✨"
         ),
         color=0xFFD166
     )
     await ch.send(embed=embed)
+    await send_space(ch, 2)
     await asyncio.sleep(STEP_DELAY)
     await send_ot_step(ch, user, 3)
     user_ot_progress[user.id] = 3
@@ -148,27 +146,34 @@ class Step4Button(discord.ui.Button):
             title="🗂️ STEP 4 : 주간 그림보고 알아가기",
             description=(
                 f"{user.mention}\n"
-                "이제 한 주를 정리해볼 시간이에요 ✨\n\n"
+                "> ✨ 이제 한 주를 정리해볼 시간이에요!\n\n"
                 "━━━━━━━━━━━━━━━━━━━\n"
-                "✅ **목표**\n"
+                "```md\n"
+                "# ✅ 목표\n"
                 "한 주간 내가 그림 관련해서 한 것들을 정리하고\n"
                 "스스로 피드백을 진행한다\n"
-                "━━━━━━━━━━━━━━━━━━━\n\n"
-                "📔 **방법**\n"
-                "자신의 디스코드 닉네임을 제목으로 **'새 포스트' 생성**\n"
-                "아래 양식을 바탕으로 **한 주에 최소 한 번씩 작업일지 작성**\n"
-                "(매일 하면 더 좋습니다! 자유롭게 블로그처럼 이용해도 좋아요 🥰)\n"
-                "━━━━━━━━━━━━━━━━━━━\n\n"
-                "**작성 양식 예시** ✏️\n"
-                "[한 주간 진행한 것들]\n\n"
-                "[잘한 점] (최소 3가지 이상)\n"
-                "1.\n2.\n3.\n\n"
-                "[개선해야 할 점] (최소 3가지 이상)\n"
-                "1.\n2.\n3.\n\n"
-                "[개선 방법]\n- \n- "
-            ),
-            color=0x43B581
-        )
+                "```\n"
+                "━━━━━━━━━━━━━━━━━━━\n"
+                "```md\n"
+        "# 📔 방법\n"
+        "자신의 디스코드 닉네임을 제목으로 '새 포스트' 생성\n"
+        "아래 양식을 바탕으로 한 주에 최소 한 번씩 작업일지 작성\n"
+        "(매일 하면 더 좋습니다! 자유롭게 블로그처럼 이용해도 좋아요 🥰)\n"
+        "```\n"
+        "━━━━━━━━━━━━━━━━━━━\n"
+        "```md\n"
+        "# ✏️ 작성 양식 예시\n"
+        "[한 주간 진행한 것들]\n\n"
+        "[잘한 점] (최소 3가지 이상)\n"
+        "1.\n2.\n3.\n\n"
+        "[개선해야 할 점] (최소 3가지 이상)\n"
+        "1.\n2.\n3.\n\n"
+        "[개선 방법]\n- \n- "
+        "```"
+    ),
+    color=0x43B581
+)
+
         await ch.send(embed=embed)
 
         # ② 20초 후: 주간 보고서 이동 버튼
@@ -246,15 +251,14 @@ async def on_message(msg):
         ch = bot.get_channel(next((cid for cid, uid in channel_owner.items() if uid == user.id), None))
         if not ch: return
         await asyncio.sleep(10)
-        await ch.send(f"{user.mention} ✅ 출근 완료!")
-        await send_space(ch)
+        await ch.send(f"{user.mention}")
         embed = discord.Embed(
             title="🎉 출근 완료!",
-            description=(f"{channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 출근을 완료했어요 🌅\n"
-                         "매일의 출근이 당신의 루틴이 될 거예요.\n\n"
-                         "이제 다음 단계로 넘어가볼까요?"),
+            description=(f"앞으로도 {channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 매일 출근해보세요\n"
+                         "매일의 출근이 당신의 루틴이 될 거예요.\n\n"),
             color=0xFFD166)
         await ch.send(embed=embed)
+        await send_space(ch, 2)
         await asyncio.sleep(STEP_DELAY)
         await send_ot_step(ch, user, 2)
         user_ot_progress[user.id] = 2
@@ -263,15 +267,15 @@ async def on_message(msg):
         ch = bot.get_channel(next((cid for cid, uid in channel_owner.items() if uid == user.id), None))
         if not ch: return
         await asyncio.sleep(10)
-        await ch.send(f"{user.mention} ✅ 보고서 확인 완료!")
-        await send_space(ch)
+        await ch.send(f"{user.mention}")
         embed = discord.Embed(
             title="📊 보고서 확인 완료!",
-            description=(f"{channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 보고서를 확인했어요!\n"
-                         "앞으로도 이곳에서 하루의 성과를 꾸준히 체크해봐요 🌱\n\n"
-                         "이제 마지막 단계로 넘어가볼까요?"),
+            description=(f"앞으로도 {channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 하루의 성과를 꾸준히 체크해봐요\n"
+                         "출근과 일일그림보고만 완료해도 하루 업무완료!/n"
+                         "초록색칸이 채워지는 만큼 여러분의 실력도 성장할거에요!"),
             color=0x43B581)
         await ch.send(embed=embed)
+        await send_space(ch, 2)
         await asyncio.sleep(STEP_DELAY)
         await send_ot_step(ch, user, 4)
         user_ot_progress[user.id] = 4
@@ -289,9 +293,9 @@ async def create_private_ot_channel(guild, member):
     channel_owner[ch.id] = member.id
 
     embed = discord.Embed(title="🎓 그림친구 1팀 신입 OT 안내",
-                          description="안녕하세요! 인사팀입니다 💼\n\n지금부터 천천히 **신입 OT를 진행하겠습니다.**",
+                          description="안녕하세요! 인사팀입니다 💼\n\n지금부터 천천히 따라하면서 체험해보아요**",
                           color=0x00B2FF)
-    await ch.send(f"{member.mention} 👋 반가워요!\n이곳은 **인사팀과 함께 진행하는 신입 OT 공간**이에요 🎨")
+    await ch.send(f"{member.mention} 👋 반가워요!\n이곳은 커뮤니티 튜토리얼 공간입니다!")
     await send_space(ch)
     await ch.send(embed=embed, view=StartView())
     return ch
@@ -304,6 +308,10 @@ class StartView(discord.ui.View):
         await itx.response.defer()
         user = itx.user
         user_ot_progress[user.id] = 1
+        await send_ot_step(itx.channel, user, 1)
+
+        await send_space(itx.channel, 2)
+
         await send_ot_step(itx.channel, user, 1)
 
 # === 역할 부여 감지 ===
@@ -413,6 +421,7 @@ async def on_thread_create(thread: discord.Thread):
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
