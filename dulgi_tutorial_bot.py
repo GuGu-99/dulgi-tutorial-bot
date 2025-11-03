@@ -104,7 +104,7 @@ async def trigger_step2_after_delay(user: discord.Member):
         description=(
             "앞으로 자신의 그림 성장과정을 매일 공유해보세요🎨\n"
             "🖼️ 낙서, 크로키, 모작, 그림 연구 등 모두 좋아요!\n"
-            "\n"
+            "\n\n"
             "✨**이미지와 함께 올려주셔야 하루 성과가 인정됩니다**✨"
         ),
         color=0xFFD166
@@ -115,7 +115,7 @@ async def trigger_step2_after_delay(user: discord.Member):
     await send_ot_step(ch, user, 3)
     user_ot_progress[user.id] = 3
 
-# === Step4 포럼 버튼 (간략화 버전) ===
+# === Step4 포럼 버튼 (간략화 버전, 수정됨) ===
 class Step4Button(discord.ui.Button):
     def __init__(self, user):
         super().__init__(label="📑 주간 그림보고 알아보기", style=discord.ButtonStyle.success)
@@ -155,26 +155,26 @@ class Step4Button(discord.ui.Button):
                 "```\n"
                 "━━━━━━━━━━━━━━━━━━━\n"
                 "```md\n"
-        "# 📔 방법\n"
-        "자신의 디스코드 닉네임을 제목으로 '새 포스트' 생성\n"
-        "아래 양식을 바탕으로 한 주에 최소 한 번씩 작업일지 작성\n"
-        "(매일 하면 더 좋습니다! 자유롭게 블로그처럼 이용해도 좋아요 🥰)\n"
-        "```\n"
-        "━━━━━━━━━━━━━━━━━━━\n"
-        "```md\n"
-        "# ✏️ 작성 양식 예시\n"
-        "[한 주간 진행한 것들]\n\n"
-        "[잘한 점] (최소 3가지 이상)\n"
-        "1.\n2.\n3.\n\n"
-        "[개선해야 할 점] (최소 3가지 이상)\n"
-        "1.\n2.\n3.\n\n"
-        "[개선 방법]\n- \n- "
-        "```"
-    ),
-    color=0x43B581
-)
-
+                "# 📔 방법\n"
+                "자신의 디스코드 닉네임을 제목으로 '새 포스트' 생성\n"
+                "아래 양식을 바탕으로 한 주에 최소 한 번씩 작업일지 작성\n"
+                "(매일 하면 더 좋습니다! 자유롭게 블로그처럼 이용해도 좋아요 🥰)\n"
+                "```\n"
+                "━━━━━━━━━━━━━━━━━━━\n"
+                "```md\n"
+                "# ✏️ 작성 양식 예시\n"
+                "[한 주간 진행한 것들]\n\n"
+                "[잘한 점] (최소 3가지 이상)\n"
+                "1.\n2.\n3.\n\n"
+                "[개선해야 할 점] (최소 3가지 이상)\n"
+                "1.\n2.\n3.\n\n"
+                "[개선 방법]\n- \n- "
+                "```"
+            ),
+            color=0x43B581
+        )
         await ch.send(embed=embed)
+
 
         # ② 20초 후: 주간 보고서 이동 버튼
         await asyncio.sleep(20)
@@ -271,7 +271,7 @@ async def on_message(msg):
         embed = discord.Embed(
             title="📊 보고서 확인 완료!",
             description=(f"앞으로도 {channel_mention(CHANNEL_CHECKIN_ID)} 채널에서 하루의 성과를 꾸준히 체크해봐요\n"
-                         "출근과 일일그림보고만 완료해도 하루 업무완료!/n"
+                         "출근과 일일그림보고만 완료해도 하루 업무완료!\n\n"
                          "초록색칸이 채워지는 만큼 여러분의 실력도 성장할거에요!"),
             color=0x43B581)
         await ch.send(embed=embed)
@@ -308,7 +308,6 @@ class StartView(discord.ui.View):
         await itx.response.defer()
         user = itx.user
         user_ot_progress[user.id] = 1
-        await send_ot_step(itx.channel, user, 1)
 
         await send_space(itx.channel, 2)
 
@@ -421,6 +420,7 @@ async def on_thread_create(thread: discord.Thread):
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
