@@ -17,8 +17,9 @@ from threading import Thread
 intents = discord.Intents.default()
 intents.guilds = True
 intents.members = True
-intents.messages = True        # ← 추가
+intents.messages = True
 intents.message_content = True
+intents.threads = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
@@ -179,34 +180,6 @@ class Step4Button(discord.ui.Button):
         )
         await ch.send(embed=embed)
 
-
-        # ② 20초 후: 주간 보고서 이동 버튼
-        await asyncio.sleep(20)
-        view_report = discord.ui.View()
-        view_report.add_item(discord.ui.Button(
-            label="🗂️ 나만의 주간그림보고서 만들어보기",
-            style=discord.ButtonStyle.success,
-            url=f"https://discord.com/channels/{ch.guild.id}/1423360385225851011"
-        ))
-        await ch.send(f"{user.mention} 이제 주간보고서를 만들어볼까요? ✨", view=view_report)
-
-        # ③ 30초 후: 확인 및 가이드 재보기 버튼
-        await asyncio.sleep(40)
-        view_guide = discord.ui.View()
-        view_guide.add_item(discord.ui.Button(
-            label="📘 주간보고 가이드 보러가기",
-            style=discord.ButtonStyle.primary,  # 파랑 or 눈에 띄는 색
-            url=f"https://discord.com/channels/{ch.guild.id}/1426954981638013049"
-        ))
-        await ch.send(
-            f"{user.mention} 잘 만들어 봤나요? 🎨\n"
-            "혹시 아직이라면 꼭 만들어서 한 주에 한 번씩은 작성해보세요!\n"
-            "가이드를 다시 보고 싶다면 아래 버튼을 눌러주세요 👇",
-            view=view_guide
-        )
-
-                # ④ 5초 후: 마무리 및 OT 종료 버튼
-        await asyncio.sleep(5)
 
      # ✅ 튜토리얼 완료 시 역할 교체 (완료 부여 + 시작 제거)
         member = ch.guild.get_member(user.id)
@@ -474,6 +447,7 @@ async def on_thread_create(thread: discord.Thread):
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
