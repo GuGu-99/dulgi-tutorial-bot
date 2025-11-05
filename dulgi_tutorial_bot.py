@@ -19,7 +19,6 @@ intents.guilds = True
 intents.members = True
 intents.messages = True
 intents.message_content = True
-intents.threads = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
@@ -447,6 +446,7 @@ async def on_thread_create(thread: discord.Thread):
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
