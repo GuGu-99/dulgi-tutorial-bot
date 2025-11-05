@@ -74,10 +74,9 @@ OT_STEPS = {
     3: {"title": "📊 **Step 3 : 하루 성과 확인하기**",
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
-            "**출근, 일일 그림 보고를 마친 후 하루의 성과를 확인해보세요**\n\n"
+            f"이제 {channel_mention(CHANNEL_CHECKIN_ID)} 채널로 이동 후 명령어를 입력해보세요! 🌱\n/n"
             "✳️ **명령어 입력 방법**\n"
             "느낌표 + `보고서`\n예: `!보고서`\n\n"
-            f"이제 {channel_mention(CHANNEL_CHECKIN_ID)} 채널로 이동 후 명령어를 입력해보세요! 🌱\n"
             "━━━━━━━━━━━━━━━━━━━"
         )},
     4: {"title": "🗂️ **Step 4 : 주간 그림보고 만들기**",
@@ -158,16 +157,9 @@ class Step4Button(discord.ui.Button):
             title="🗂️ STEP 4 : 주간 그림보고 가이드",
             description=(
                 f"{user.mention}\n"
-                "━━━━━━━━━━━━━━━━━━━\n"
-                "```\n"
-                "# ✅ 목표\n"
-                "한 주간 내가 그림 관련해서 한 것들을 정리하고\n"
-                "스스로 피드백을 진행한다\n"
-                "```\n"
-                "━━━━━━━━━━━━━━━━━━━\n"
                 "```\n"
                 f"# 📔 방법\n"
-                f"1. {channel_mention(1423360385225851011)}에서 '새 포스트' 생성 클릭!\n\n"
+                f"1. {channel_mention(FORUM_CHANNEL_ID)}에서 '새 포스트' 생성 클릭!\n\n"
                 "2. 자신의 닉네임을 제목으로, 원하는 프로필 이미지를 첨부해서 포스트를 만들어주세요\n\n"
                 "3. 아래 양식을 바탕으로 한 주에 최소 한 번씩 작업일지 작성\n\n"
                 "*프로필 이미지는 차후 변경이 어려우니 자신을 대표할만한 그림을 올려보아요! 🥰\n\n"
@@ -482,6 +474,7 @@ async def on_thread_create(thread: discord.Thread):
 
     except Exception as e:
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
+
 
 
 
