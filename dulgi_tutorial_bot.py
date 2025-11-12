@@ -448,6 +448,14 @@ async def on_thread_create(thread: discord.Thread):
         print(f"⚠️ on_thread_create 처리 중 오류: {e}")
 
 
+@bot.event
+async def on_ready():
+    keep_alive()
+    bot.add_view(StartView())
+    for g in bot.guilds:
+        await g.chunk()  # 🔥 모든 멤버 캐시 강제 로드
+    print(f"✅ 로그인 완료: {bot.user} (인사팀 OT 봇)")
+
 
 
 
