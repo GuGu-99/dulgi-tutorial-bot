@@ -104,8 +104,6 @@ async def trigger_step2_after_delay(user: discord.Member):
         description=(
             "앞으로 자신의 그림 성장과정을 매일 공유해보세요🎨\n"
             "🖼️ 낙서, 크로키, 모작, 그림 연구 등 모두 좋아요!\n"
-            "\n\n"
-            "✨**이미지와 함께 올려주셔야 하루 성과가 인정됩니다**✨"
         ),
         color=0xFFD166
     )
@@ -455,6 +453,7 @@ async def on_ready():
     for g in bot.guilds:
         await g.chunk()  # 🔥 모든 멤버 캐시 강제 로드
     print(f"✅ 로그인 완료: {bot.user} (인사팀 OT 봇)")
+
 
 
 
