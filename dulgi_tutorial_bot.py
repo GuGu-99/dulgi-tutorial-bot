@@ -124,19 +124,19 @@ async def trigger_step2_after_delay(user: discord.Member):
     await send_ot_step(ch, user, 3)
     user_ot_progress[user.id] = 3
 
-# === Step4 포럼 버튼 (간략화 버전, 수정됨) ===
+# === Step4 포럼 버튼 (완전 개편 버전) ===
 class Step4Button(discord.ui.Button):
     def __init__(self, user):
-        super().__init__(label="📑 주간 그림보고 가이드", style=discord.ButtonStyle.success)
+        super().__init__(label="📑 주간 그림보고 가이드 보기", style=discord.ButtonStyle.success)
         self.user = user
         self.clicked = False
 
     async def callback(self, interaction):
         if interaction.user.id != self.user.id:
-            await interaction.response.send_message("본인 진행용 버튼이에요 🙏", ephemeral=True)
+            await interaction.response.send_message("이건 본인 진행용 버튼이에요 🙏", ephemeral=True)
             return
         if self.clicked:
-            await interaction.response.send_message("이미 확인하셨어요 ✅", ephemeral=True)
+            await interaction.response.send_message("이미 가이드를 열람하셨습니다 ✅", ephemeral=True)
             return
 
         self.clicked = True
@@ -144,80 +144,180 @@ class Step4Button(discord.ui.Button):
         self.disabled = True
         await interaction.message.edit(view=self.view)
 
+        # 개인 채널 탐색
         ch_id = next((cid for cid, uid in channel_owner.items() if uid == self.user.id), None)
         if not ch_id:
             return
         ch = bot.get_channel(ch_id)
         user = self.user
 
-        # ① Step4 안내 메시지
+        # ① GitHub 이미지(4-1~4-4) 업로드
+        image_urls = [
+            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-1.jpg",
+            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-2.jpg",
+            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-3.jpg",
+            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-4.jpg",
+        ]
+        for url in image_urls:
+            await ch.send(url)
+        await asyncio.sleep(5)
+
+        # ② 가이드 후 포럼 이동 유도 메시지 + 완료 버튼
         embed = discord.Embed(
-            title="🗂️ STEP 4 : 주간 그림보고 가이드",
+            title="📘 이제 한번 가이드대로 만들어볼까요?",
             description=(
-                f"{user.mention}\n"
-                "```\n"
-                f"# 📔 방법\n"
-                f"1. {channel_mention(FORUM_CHANNEL_ID)}에서 '새 포스트' 생성 클릭!\n\n"
-                "2. 자신의 닉네임을 제목으로, 원하는 프로필 이미지를 첨부해서 포스트를 만들어주세요\n\n"
-                "3. 아래 양식을 바탕으로 한 주에 최소 한 번씩 작업일지 작성\n\n"
-                "*프로필 이미지는 차후 변경이 어려우니 자신을 대표할만한 그림을 올려보아요! 🥰\n\n"
-                "```\n"
-                "━━━━━━━━━━━━━━━━━━━\n"
-                "```\n"
-                "# ✏️ 작성 양식 예시\n"
-                "[한 주간 진행한 것들]\n\n"
-                "[잘한 점] (최소 3가지 이상)\n"
-                "1.\n2.\n3.\n\n"
-                "[개선해야 할 점] (최소 3가지 이상)\n"
-                "1.\n2.\n3.\n\n"
-                "[개선 방법]\n- \n- "
-                "```"
+                f"{user.mention} 아래 버튼을 눌러 주간 그림보고를 작성해보세요!\n\n"
+                "작성 후엔 꼭 **[주간 그림보고서 제작 완료!]** 버튼을 눌러주세요 ✅"
             ),
             color=0x43B581
         )
-        await ch.send(embed=embed)
+        view_make = discord.ui.View()
+        view_make.add_item(discord.ui.Button(
+            label="🗂️ 주간 그림보고 포럼 열기",
+            style=discord.ButtonStyle.link,
+            url=f"https://discord.com/channels/{ch.guild.id}/{FORUM_CHANNEL_ID}"
+        ))
+        view_make.add_item(Step4CompleteButton(user))  # 아래 커스텀 버튼 추가
+        await ch.send(embed=embed, view=view_make)
+
+        # ③ 3분 내 미응답 시 리마인드
+        await asyncio.sleep(180)
+        if user_ot_progress.get(user.id) == 4:  # 여전히 완료 안 됐을 경우
+            await ch.send(
+                f"{user.mention} 아직 [주간 그림보고서 제작 완료] 버튼을 누르지 않았어요 💭\n"
+                "가이드를 천천히 따라 만든 후 꼭 위 버튼을 눌러주세요!"
+            )
 
 
-     # ✅ 튜토리얼 완료 시 역할 교체 (완료 부여 + 시작 제거)
+# === Step4 완료 버튼 ===
+class Step4CompleteButton(discord.ui.Button):
+    def __init__(self, user):
+        super().__init__(label="📘 주간 그림보고서 제작 완료!", style=discord.ButtonStyle.primary)
+        self.user = user
+
+    async def callback(self, interaction):
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("본인용 버튼이에요 🙏", ephemeral=True)
+            return
+        await interaction.response.defer()
+
+        ch_id = next((cid for cid, uid in channel_owner.items() if uid == self.user.id), None)
+        if not ch_id:
+            return
+        ch = bot.get_channel(ch_id)
+        user = self.user
+
+        # ① 축하 메시지 + 작성법 안내 버튼 생성
+        await ch.send(
+            f"🎉 {user.mention} 주간 그림보고서 완료를 축하드립니다!\n"
+            "이제 주간 보고서를 꾸준히 작성하는 법을 알아볼까요?"
+        )
+
+        view_guide = discord.ui.View()
+        view_guide.add_item(Step4GuideButton(user))
+        await ch.send(view=view_guide)
+
+
+# === Step4 작성법 버튼 ===
+class Step4GuideButton(discord.ui.Button):
+    def __init__(self, user):
+        super().__init__(label="📖 주간 그림보고 작성법 알아보기", style=discord.ButtonStyle.success)
+        self.user = user
+        self.clicked = False
+
+    async def callback(self, interaction):
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("본인용 버튼이에요 🙏", ephemeral=True)
+            return
+        if self.clicked:
+            await interaction.response.send_message("이미 열람하셨어요 ✅", ephemeral=True)
+            return
+
+        self.clicked = True
+        await interaction.response.defer()
+
+        ch_id = next((cid for cid, uid in channel_owner.items() if uid == self.user.id), None)
+        if not ch_id:
+            return
+        ch = bot.get_channel(ch_id)
+        user = self.user
+
+        # ② GitHub 이미지(4-5~4-8) 업로드
+        image_urls = [
+            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-5.jpg",
+            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-6.jpg",
+            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-7.jpg",
+            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-8.jpg",
+        ]
+        for url in image_urls:
+            await ch.send(url)
+
+        # ③ 10초 뒤 멘트 + 마무리 단계로 이동
+        await asyncio.sleep(10)
+        await ch.send(
+            f"{user.mention} 다 읽어보셨나요? ✨\n"
+            "이제 자신이 원하는 시간에 꾸준히 주간 보고서를 작성해보세요.\n"
+            "꾸준함이 쌓이면 더 멋진 나로 성장할 거예요 🌱"
+        )
+
+        await asyncio.sleep(5)
+        await send_final_ot_message(ch, user)  # 아래 정의된 마무리 함수 호출
+
+
+# === Step4 마무리 ===
+async def send_final_ot_message(ch, user):
+    embed_end = discord.Embed(
+        title="🏁 신입 OT 완료!",
+        description=(
+            "🎉 이제 모든 튜토리얼이 완료되었습니다!\n"
+            "매주 한 번씩 주간 그림보고를 작성하며 성장하는 시간을 가져보세요 🌱\n\n"
+            f"궁금한 점은 언제든 <#{CHANNEL_QNA_ID}> 채널로 문의해주세요 📩"
+        ),
+        color=0x5865F2
+    )
+    embed_end.set_footer(text="그림친구 1팀 • 튜토리얼 완료")
+
+    view_end = discord.ui.View()
+    view_end.add_item(discord.ui.Button(
+        label="🎯 신입 OT 끝!",
+        style=discord.ButtonStyle.blurple,
+        url=f"https://discord.com/channels/{ch.guild.id}/{CHANNEL_QNA_ID}"
+    ))
+
+    await ch.send(content=f"{user.mention}", embed=embed_end, view=view_end)
+    await asyncio.sleep(2)
+    await ch.send("이 채널은 **7일 뒤 자동 삭제**될 예정이에요 🕓")
+    asyncio.create_task(delete_channel_after_week(ch))
+
+    # ✅ 역할 교체 (튜토리얼 완료 시점)
+    try:
         member = ch.guild.get_member(user.id)
         if not member:
             member = await ch.guild.fetch_member(user.id)
 
         role_start = ch.guild.get_role(START_ROLE_ID)
         role_complete = ch.guild.get_role(COMPLETE_ROLE_ID)
-        try:
-            if role_complete and role_complete not in member.roles:
-                await member.add_roles(role_complete, reason="튜토리얼 완료")
-                print(f"🎓 {member.display_name} → 튜토리얼 완료 역할 부여")
 
-            if role_start and role_start in member.roles:
-                await member.remove_roles(role_start, reason="튜토리얼 완료 후 시작 역할 제거")
-                print(f"🧹 {member.display_name} → 튜토리얼 시작 역할 제거")
-        except Exception as e:
-            print(f"⚠️ 역할 교체 실패: {e}")
+        if role_complete and role_complete not in member.roles:
+            await member.add_roles(role_complete, reason="튜토리얼 완료 (Step4 종료)")
+            print(f"🎓 {member.display_name} → 튜토리얼 완료 역할 부여")
 
+        if role_start and role_start in member.roles:
+            await member.remove_roles(role_start, reason="튜토리얼 완료 후 시작 역할 제거")
+            print(f"🧹 {member.display_name} → 튜토리얼 시작 역할 제거")
 
-        # 🎯 마지막 안내 임베드 + 버튼
-        view_end = discord.ui.View()
-        view_end.add_item(discord.ui.Button(
-            label="🎯 신입 OT 끝!",
-            style=discord.ButtonStyle.blurple,
-            url=f"https://discord.com/channels/{ch.guild.id}/1423174036917325916"
-        ))
+    except Exception as e:
+        print(f"⚠️ 역할 교체 실패: {e}")
 
-        embed_end = discord.Embed(
-            title="🏁 신입 OT 완료!",
-            description=(
-                "매달 **우수사원**을 선정하고 있어요! ✨\n"
-                "꾸준히 참여하신다면 분명 이름이 올라갈 거예요 🏆\n\n"
-                f"궁금한 점은 언제든 <#{CHANNEL_QNA_ID}> 채널로 문의해주세요 📩\n"
-                "이제 모든 OT가 완료되었습니다. 수고하셨습니다 🎉"
-            ),
-            color=0x5865F2
-        )
-        embed_end.set_footer(text="그림친구 1팀 • 튜토리얼 완료")
+# === 7일 뒤 채널 삭제 ===
+async def delete_channel_after_week(ch):
+    await asyncio.sleep(7 * 24 * 60 * 60)  # 7일(초 단위)
+    try:
+        await ch.delete(reason="튜토리얼 완료 후 자동 삭제")
+        print(f"🧹 채널 자동 삭제됨 → {ch.name}")
+    except Exception as e:
+        print(f"⚠️ 채널 삭제 실패: {e}")
 
-        await ch.send(content=f"{user.mention}", embed=embed_end, view=view_end)
 
 
 # === Step 전송 ===
@@ -338,11 +438,6 @@ async def on_member_update(before, after):
 
 
 # === 실행 ===
-@bot.event
-async def on_ready():
-    keep_alive()
-    bot.add_view(StartView())
-    print(f"✅ 로그인 완료: {bot.user} (인사팀 OT 봇)")
 
 if __name__ == "__main__":
     TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
@@ -453,22 +548,3 @@ async def on_ready():
     for g in bot.guilds:
         await g.chunk()  # 🔥 모든 멤버 캐시 강제 로드
     print(f"✅ 로그인 완료: {bot.user} (인사팀 OT 봇)")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
