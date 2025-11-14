@@ -74,7 +74,7 @@ OT_STEPS = {
     3: {"title": "📊 **Step 3 : 하루 성과 확인하기**",
         "desc": (
             "━━━━━━━━━━━━━━━━━━━\n"
-            f"이제 {channel_mention(CHANNEL_CHECKIN_ID)} 채널로 이동 후 명령어를 입력해보세요! 🌱\n/n"
+            f"이제 {channel_mention(CHANNEL_CHECKIN_ID)} 채널로 이동 후 명령어를 입력해보세요! 🌱\n\n"
             "✳️ **명령어 입력 방법**\n"
             "느낌표 + `보고서`\n예: `!보고서`\n\n"
             "━━━━━━━━━━━━━━━━━━━"
@@ -153,10 +153,10 @@ class Step4Button(discord.ui.Button):
 
         # ① GitHub 이미지(4-1~4-4) 업로드
         image_urls = [
-            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-1.jpg",
-            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-2.jpg",
-            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-3.jpg",
-            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-4.jpg",
+            "https://raw.githubusercontent.com/GuGu-99/dulgi-tutorial-bot/main/4-1.jpg",
+            "https://raw.githubusercontent.com/GuGu-99/dulgi-tutorial-bot/main/4-2.jpg",
+            "https://raw.githubusercontent.com/GuGu-99/dulgi-tutorial-bot/main/4-3.jpg",
+            "https://raw.githubusercontent.com/GuGu-99/dulgi-tutorial-bot/main/4-4.jpg",
         ]
         for url in image_urls:
             await ch.send(url)
@@ -244,10 +244,10 @@ class Step4GuideButton(discord.ui.Button):
 
         # ② GitHub 이미지(4-5~4-8) 업로드
         image_urls = [
-            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-5.jpg",
-            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-6.jpg",
-            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-7.jpg",
-            "https://raw.github.com/GuGu-99/dulgi-tutorial-bot/main/4-8.jpg",
+            "https://raw.githubusercontent.com/GuGu-99/dulgi-tutorial-bot/main/4-5.jpg",
+            "https://raw.githubusercontent.com/GuGu-99/dulgi-tutorial-bot/main/4-6.jpg",
+            "https://raw.githubusercontent.comm/GuGu-99/dulgi-tutorial-bot/main/4-7.jpg",
+            "https://raw.githubusercontent.com/GuGu-99/dulgi-tutorial-bot/main/4-8.jpg",
         ]
         for url in image_urls:
             await ch.send(url)
@@ -436,14 +436,6 @@ async def on_member_update(before, after):
 
 
 
-
-# === 실행 ===
-
-if __name__ == "__main__":
-    TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
-    bot.run(TOKEN)
-
-
 # === 포럼 게시글(스레드) 생성 감지 ===
 @bot.event
 async def on_thread_create(thread: discord.Thread):
@@ -548,3 +540,10 @@ async def on_ready():
     for g in bot.guilds:
         await g.chunk()  # 🔥 모든 멤버 캐시 강제 로드
     print(f"✅ 로그인 완료: {bot.user} (인사팀 OT 봇)")
+
+
+# === 실행 ===
+
+if __name__ == "__main__":
+    TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
+    bot.run(TOKEN)
